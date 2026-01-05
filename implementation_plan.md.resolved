@@ -1,0 +1,34 @@
+# Implementation Plan - QUBO Problem Generation
+
+## Goal Description
+The goal is to:
+1.  Explain Quantum Annealing (QA) and Quadratic Unconstrained Binary Optimization (QUBO).
+2.  Create a QUBO problem formulation where the ground state (solution) is a specific binary string $x = b_0 b_1 \dots b_{n-1}$.
+3.  Implement a Python script to demonstrate this.
+
+## User Review Required
+> [!WARNING]
+> I was unable to read the content of `기댓값0만들기_2트.pdf` and `읽어봐줘!.pdf` as they are PDF files and I lack the tools to extract text from them. I will proceed with standard QUBO formulations. If these files contain specific constraints or alternative methods, please let me know.
+
+## Proposed Changes
+
+### Documentation
+#### [NEW] [QUBO_explanation.md](file:///home/yideun/QUBO_dataset/QUBO_explanation.md)
+-   Create a markdown file explaining:
+    -   Basic concept of Quantum Annealing.
+    -   Definition of QUBO ($E(x) = x^T Q x$).
+    -   How to map a constraint satisfaction problem to QUBO.
+    -   Mathematical derivation for the specific problem: "Find $Q$ such that $x = b$ is the minimum."
+
+### Code
+#### [NEW] [qubo_generator.py](file:///home/yideun/QUBO_dataset/qubo_generator.py)
+-   A Python script that:
+    -   Accepts a target binary string (e.g., "10101").
+    -   Constructs the Q matrix where $Q_{ii} = 1 - 2b_i$ (and off-diagonal 0).
+    -   Calculates the energy for all possible states (or a subset for large $n$) to verify the minimum is indeed at the target.
+    -   Prints the Q matrix and the verification result.
+
+## Verification Plan
+
+### Automated Tests
+-   Run `python3 qubo_generator.py` with a hardcoded target (e.g., "101") and assert that the energy of "101" is strictly lower than any other state.
