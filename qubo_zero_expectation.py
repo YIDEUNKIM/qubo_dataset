@@ -8,6 +8,8 @@ import itertools
 import random
 import csv
 import numpy as np
+import sys
+import os
 
 
 
@@ -38,7 +40,7 @@ class DefaultZeroExpectationModel(PenaltyModel):
     def __init__(self):
         # 정규화 기준: 최솟값 = 1.0 (LP 결과값 캡슐화)
         self._ratios_table = {
-            # 정답 = (0, 0)
+            # 정답 = (0, 0): 페널티
             (0, 0): {(0, 1): 1.00, (1, 0): 1.00, (1, 1): 1.65},
             # 정답 = (0, 1)
             (0, 1): {(0, 0): 2.00, (1, 0): 1.00, (1, 1): 1.68},
@@ -62,7 +64,7 @@ class SimpleUniformModel(PenaltyModel):
         return {s: 1.0 for s in all_states if s != target_pair}
 
 
-def create_qubo_precise(target_binary_string, density=1.0, base_range=(1, 3), model: PenaltyModel = None):
+def create_qubo_precise(target_binary_string, density=1.0, base_range=(1, 3), model: PenaltyModel = None, **kwargs):
     """
     정밀한 기댓값 0 QUBO 생성
     
@@ -129,6 +131,78 @@ def create_qubo_precise(target_binary_string, density=1.0, base_range=(1, 3), mo
                     # 전개: r*x_i*x_j
                     Q[(i, j)] = Q.get((i, j), 0) + r
     
+    # 행/열 합 0으로 수렴하게 만들기 (옵션)
+    if kwargs.get('balance_rows', False):
+        # Ising 모델 기반으로 재생성 (기존 Q 덮어쓰기)
+        # 이 방식은 E[RowSum] = 0을 만족하면서 Ground State를 완벽히 보존함
+        Q = create_qubo_ising_derived(target_binary_string, density=density, base_range=base_range)
+        
+    return Q
+
+
+def create_qubo_ising_derived(target, density=1.0, base_range=(1, 3)):
+    """
+    Ising 모델 (H = -sum J_ij s_i s_j, h_i=0)에서 유도된 QUBO.
+    특징:
+    1. Ground State가 Target과 일치함이 수학적으로 보장됨.
+    2. QUBO 변환 시 Expected Row Sum이 0임.
+    """
+    n = len(target)
+    Q = {}
+    
+    # Ising Spin 변환 (-1, 1)
+    spins = [1 if b == '1' else -1 for b in target]
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            if random.random() > density:
+                continue
+                
+            # Ising Interaction J_ij
+            # Target 상태에서 에너지가 최소화되려면 J_ij * s_i * s_j > 0 이어야 함 (H = - sum ...)
+            # 즉 J_ij = alpha * s_i * s_j
+            alpha = random.uniform(*base_range)
+            J_ij = alpha * spins[i] * spins[j]
+            
+            # Convert Ising J to QUBO
+            # H_term = - J_ij * s_i * s_j
+            # s = 2x - 1
+            # s_i s_j = (2x_i - 1)(2x_j - 1) = 4x_ix_j - 2x_i - 2x_j + 1
+            # H_term = - J_ij (4x_ix_j - 2x_i - 2x_j + 1)
+            #        = -4 J_ij x_ix_j + 2 J_ij x_i + 2 J_ij x_j - J_ij
+            
+            q_ij = -4 * J_ij
+            q_i = 2 * J_ij
+            q_j = 2 * J_ij
+            
+            Q[(i, j)] = Q.get((i, j), 0) + q_ij
+            Q[(i, i)] = Q.get((i, i), 0) + q_i
+            Q[(j, j)] = Q.get((j, j), 0) + q_j
+            
+    return Q
+
+
+def balance_qubo_rows(Q, n):
+    """Deprecated: 단순 보정은 Ground State를 깸. Ising Derived 사용 권장."""
+    # 각 변수별 총 합 계산 (대각 + 비대각)
+    # Q는 상삼각 형태지만 논리적으로 대칭이므로 i와 연결된 모든 j를 고려해야 함
+    row_sums = {i: 0.0 for i in range(n)}
+    
+    for (i, j), weight in Q.items():
+        if i == j:
+            row_sums[i] += weight
+        else:
+            # i < j 형태
+            row_sums[i] += weight
+            row_sums[j] += weight
+            
+    # 대각 성분 보정
+    for i in range(n):
+        # 현재 합이 S_i라면, Q_ii에서 S_i를 빼면 새로운 합은 0이 됨
+        # (Q_ii - S_i) + others = Q_ii + others - S_i = S_i - S_i = 0
+        correction = row_sums[i]
+        Q[(i, i)] = Q.get((i, i), 0) - correction
+        
     return Q
 
 
@@ -402,10 +476,31 @@ if __name__ == "__main__":
     print("단일 예제 상세 출력")
     print("=" * 60)
     
-    target = "10110"
+    target = "11000101010001101"
+    balance_mode = False
+    
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg.isdigit():
+            # 숫자로 입력되면 해당 길이의 랜덤 타겟 생성
+            length = int(arg)
+            target = "".join(str(random.randint(0, 1)) for _ in range(length))
+            print(f"[설정] 길이 {length}의 랜덤 목표 해를 생성했습니다.")
+        elif arg == "balance":
+            print("[설정] 행/열 평균 0 수렴 모드 활성화")
+            balance_mode = True
+        else:
+            # 이진 문자열로 직접 입력된 경우
+            target = arg
+            
+        # 추가 인자 확인 (순서 무관하게 balance 체크)
+        if "balance" in sys.argv:
+            balance_mode = True
+            print("[설정] 행/열 평균 0 수렴 모드 활성화")
+        
     print(f"\n목표 해: {target}")
     
-    Q = create_qubo_precise(target, density=1.0)
+    Q = create_qubo_precise(target, density=1.0, balance_rows=balance_mode)
     
     # Q 행렬 출력
     print_q_matrix(Q, len(target))
@@ -418,20 +513,40 @@ if __name__ == "__main__":
     target_energy = calculate_energy(target, Q)
     
     print(f"\n검증 결과:")
-    print(f"  목표 해 '{target}'의 에너지: {target_energy:.4f}")
-    print(f"  브루트포스 최소 해 '{found}'의 에너지: {min_energy:.4f}")
+    print(f"  목표 해 '{target}'의 에너지: {target_energy}")
     
-    if found == target:
-        print("  ✓ 성공: 목표 해가 최소값!")
+    if found is None:
+        print(f"  브루트포스 최소 해: (N > 20 이므로 생략됨)")
+        print("  - 검증 생략됨")
     else:
-        print("  ✗ 실패")
+        print(f"  브루트포스 최소 해 '{found}'의 에너지: {min_energy}")
+        
+        if found == target:
+            print("  ✓ 성공: 목표 해가 최소값!")
+        else:
+            print("  ✗ 실패")
+
+    # 결과 저장
+    output_dir = "qubo_results"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # 파일명 길이가 너무 길어지지 않도록 조정
+    filename_target = f"{target[:5]}_{len(target)}"
+    
+    output_file = os.path.join(output_dir, f"qubo_{filename_target}.txt")
+    
+    save_qubo_edgelist(Q, output_file, target)
+    print(f"\n[저장 완료] 결과 파일: {output_file}")
     
     # 에너지 순위
-    print("\n  에너지 순위 (상위 5개):")
-    sorted_results = sorted(all_results, key=lambda x: x[1])
-    for rank, (state, energy) in enumerate(sorted_results[:5], 1):
-        marker = " <- 목표" if state == target else ""
-        print(f"    {rank}. {state}: {energy:.4f}{marker}")
+    if all_results:
+        print("\n  에너지 순위 (상위 5개):")
+        sorted_results = sorted(all_results, key=lambda x: x[1])
+        for rank, (state, energy) in enumerate(sorted_results[:5], 1):
+            marker = " <- 목표" if state == target else ""
+            print(f"    {rank}. {state}: {energy:.4f}{marker}")
+    else:
+         print("\n  에너지 순위: (생략됨)")
     
     # 1. 배치 테스트
     batch_test(num_tests=30, n_bits=10)

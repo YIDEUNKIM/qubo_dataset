@@ -1,3 +1,5 @@
+# 수정 필요
+
 
 import random
 import sys
