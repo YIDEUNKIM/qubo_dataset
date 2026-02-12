@@ -53,6 +53,57 @@ class DefaultZeroExpectationModel(PenaltyModel):
     def get_ratios(self, target_pair: tuple) -> dict:
         return self._ratios_table.get(target_pair, {})
 
+class ZeroOffDiagonalModel(PenaltyModel):
+    """
+    개별 q_{ij} 기댓값 0 모델.
+
+    조건: 각 pair (i,j)에서 q_{ij}에 대한 penalty 기여의 기댓값이 0이 되려면,
+    두 비트 모두 뒤집힌 상태(double-flip)의 ratio = 단일 비트 뒤집힌 두 상태의 ratio 합.
+
+    증명:
+      q_{ij} 부호 패턴: (0,0)→+r, (0,1)→-r, (1,0)→-r, (1,1)→+r
+      target (0,0)의 경우: E[q_{ij}] = -R(01) - R(10) + R(11) = 0
+      ∴ R(11) = R(01) + R(10)
+
+    장점: off-diagonal 원소의 분포가 target pair와 완전히 독립 (모든 모멘트 동일).
+          |계수|의 multiset이 항상 {1, 1, 2}이므로, iid r에 대해 분포가 동일함.
+    단점: diagonal E[q_{kk}] ≠ 0 (부호가 b_k를 노출). 단, 탐지 SNR이 √n으로,
+          off-diagonal 누출(SNR ~ n)보다 대규모 문제에서 유리함.
+    """
+    def __init__(self):
+        self._ratios_table = {
+            # double-flip 상태에 2배, single-flip 상태에 1배
+            (0, 0): {(0, 1): 1.0, (1, 0): 1.0, (1, 1): 2.0},
+            (0, 1): {(0, 0): 1.0, (1, 0): 2.0, (1, 1): 1.0},
+            (1, 0): {(0, 0): 1.0, (0, 1): 2.0, (1, 1): 1.0},
+            (1, 1): {(0, 0): 2.0, (0, 1): 1.0, (1, 0): 1.0},
+        }
+
+    def get_ratios(self, target_pair: tuple) -> dict:
+        return self._ratios_table.get(target_pair, {})
+
+
+class BalancedModel(PenaltyModel):
+    """
+    Minimax 균형 모델: 모든 편향(off-diagonal + diagonal)의 최대값을 최소화.
+
+    max(|off_bias|, |diag_bias|) = 5/3 ≈ 1.67 (이론적 하한)
+    비교: DefaultZeroExpectationModel은 max = 5 (off-diag), BalancedModel은 5/3.
+
+    도출: a=1, b=2, c=4/3, d=1, e=7/6, f=1, g=1로 LP minimax 풀이.
+    """
+    def __init__(self):
+        self._ratios_table = {
+            (0, 0): {(0, 1): 1.0,  (1, 0): 1.0,  (1, 1): 2.0},
+            (0, 1): {(0, 0): 7/6,  (1, 0): 1.0,  (1, 1): 1.0},
+            (1, 0): {(0, 0): 7/6,  (0, 1): 1.0,  (1, 1): 1.0},
+            (1, 1): {(0, 0): 1.0,  (0, 1): 4/3,  (1, 0): 4/3},
+        }
+
+    def get_ratios(self, target_pair: tuple) -> dict:
+        return self._ratios_table.get(target_pair, {})
+
+
 class SimpleUniformModel(PenaltyModel):
     """
     대체 모델: 비교를 위한 단순 균등 페널티 모델입니다.
