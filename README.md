@@ -10,89 +10,114 @@
 
 ```
 qubo_dataset/
-├── qubo_wishart.py            # Wishart Planted Ensemble QUBO 생성기 (SA-hard)
-├── qubo_zero_expectation.py   # 기댓값 0 QUBO 생성기 (구별 불가능) + 공용 유틸리티
-├── qubo_hard_mode.py          # Backbone + Frustration 모델 (비교용)
-├── test_wishart.py            # SA 실험 프레임워크
-├── qubo_results/              # 생성된 QUBO 파일
-├── docs/
-│   ├── WISHART_EXPERIMENT.md  # 실험 결과 보고서
-│   └── DESIGN_RATIONALE.md   # 설계 근거 및 개념 정리
-├── 기댓값0만들기_2트.pdf        # 참고 논문
-└── 읽어봐줘!.pdf               # 참고 논문
+├── qubo_utils.py                 # 공유 유틸리티 (calculate_energy, save_qubo_edgelist 등)
+├── docs/                         # 실험 보고서
+│   ├── POSIFORM_EXPERIMENT.md
+│   ├── QUIET_PLANTING_EXPERIMENT.md
+│   └── ...
+│
+├── zero_expectation/             # Zero Expectation (E[q_ij]=0 보장)
+│   ├── qubo_zero_expectation.py
+│   ├── test_zero_expectation.py
+│   ├── results/                  # 생성된 QUBO 파일
+│   └── README.md
+│
+├── hard_mode/                    # Backbone + Frustration
+│   ├── qubo_hard_mode.py
+│   ├── papers/
+│   └── README.md
+│
+├── wishart/                      # Wishart Planted Ensemble (SA-hard)
+│   ├── qubo_wishart.py
+│   ├── test_wishart.py
+│   ├── results/
+│   ├── papers/
+│   └── README.md
+│
+├── quiet_planting/               # Quiet Planting (3-SAT → Rosenberg)
+│   ├── qubo_quiet_planted.py
+│   ├── test_quiet_planted.py
+│   ├── results/
+│   ├── papers/
+│   └── README.md
+│
+└── posiform/                     # Posiform Planting (2-SAT → Posiform)
+    ├── qubo_posiform.py
+    ├── test_posiform.py
+    ├── results/
+    ├── papers/
+    └── README.md
 ```
+
+각 방법론 디렉토리에 `results/`(생성된 QUBO 파일), `papers/`(참조 논문 PDF), `README.md`(상세 문서)가 포함됨.
 
 ## 생성 방식 비교
 
-| 생성기 | 설계 공간 | Ground State 보장 | SA-hard | 구별 불가능 |
-|--------|----------|------------------|---------|-----------|
-| `qubo_wishart.py` | Ising → QUBO | 수학적 보장 ($W^T t = 0$) | O (alpha < 1.0) | X |
-| `qubo_zero_expectation.py` | QUBO 직접 | LP 최적화 페널티 | X | O ($E[Q_{ij}] = 0$) |
-| `qubo_hard_mode.py` | Ising → QUBO | 조건부 (W_STRONG >> W_WEAK) | X (SA 100% 성공) | X |
+| 생성기 | QUBO 크기 | Ground State | SA 난이도 | 구별 불가능 | 핵심 논문 |
+|--------|:---------:|:-----------:|:---------:|:----------:|----------|
+| **Wishart** | n | 수학적 보장 (유한정밀도 제외) | **SA-hard** (alpha~0.7) | X (low-rank) | Hamze et al. 2020 |
+| **Quiet Planting** | n(1+alpha) | 축퇴 (field 필요) | field 의존적 | O (alpha<3.86) | Krzakala & Zdeborova 2009 |
+| **Posiform** | n | **수학적 보장 (유일)** | SA-easy | 미분석 | Hahn et al. 2023 |
+| **Zero Expectation** | n(n-1)/2 | LP 최적화 | SA-easy | O (E[q_ij]=0) | 내부 연구 |
+| **Hard Mode** | sparse | 조건부 보장 | SA-easy | X (backbone 노출) | - |
 
 ## Quick Start
 
-### Wishart Planted Ensemble (SA-hard QUBO 생성)
-
 ```bash
-# 기본 사용: target=10110, alpha=0.7
-python3 qubo_wishart.py 10110 0.7
+# Posiform: 보조변수 없이 유일한 ground state 보장
+python3 posiform/qubo_posiform.py 10110
 
-# 랜덤 target (길이 100), alpha=0.7, seed=42
-python3 qubo_wishart.py 100 0.7 42
+# Wishart: SA-hard QUBO (alpha=0.7이 가장 어려움)
+python3 wishart/qubo_wishart.py 10110 0.7
+
+# Quiet Planting: 통계적 은닉성 (alpha<3.86)
+python3 quiet_planting/qubo_quiet_planted.py 10110 4.2
+
+# Zero Expectation: E[q_ij]=0 보장
+python3 zero_expectation/qubo_zero_expectation.py 10110
+
+# Hard Mode: 비교 기준선
+python3 hard_mode/qubo_hard_mode.py 10110
 ```
 
-### SA 실험
+## SA 실험
 
 ```bash
-# Alpha sweep (N=100, 10 runs per alpha)
-python3 test_wishart.py 100 10
+# Posiform N 스케일링 (10 runs)
+python3 posiform/test_posiform.py --scaling 10
 
-# N 스케일링 (alpha=0.7 고정)
-python3 test_wishart.py --scaling 0.7
+# Wishart alpha sweep (N=100, 10 runs)
+python3 wishart/test_wishart.py 100 10
 
-# Wishart vs Hard Mode 비교
-python3 test_wishart.py --compare
+# Quiet Planting N 스케일링
+python3 quiet_planting/test_quiet_planted.py --scaling 4.2
 
-# Hardness metrics (TTS, 에너지비)
-python3 test_wishart.py --metrics
+# 5-way 비교 (Posiform vs Quiet vs Wishart vs ZeroExp vs HardMode)
+python3 posiform/test_posiform.py --compare
 ```
 
-## 주요 실험 결과
+## 주요 실험 결과 요약
 
-### Alpha Sweep (N=100, SA num_reads=200)
+### SA 성공률 비교 (num_reads=1~200)
 
-| Alpha | SA 성공률 | 에너지 정확도 | 구간 |
-|-------|----------|-------------|------|
-| 0.50  | 0%       | 94.6%       | Hard |
-| 0.70  | 0%       | 92.7%       | **최고 난이도** |
-| 0.85  | 50%      | 95.3%       | 전이 구간 |
-| 0.95  | 100%     | 100%        | Easy |
+| N | Posiform | Quiet (field=0.5) | Wishart (alpha=0.7) | ZeroExp | HardMode |
+|---:|:--------:|:-----------------:|:-------------------:|:-------:|:--------:|
+| 100 | **100%** | 100% | ~10% | ~100% | ~100% |
+| 500 | **100%** | 20% | ~0% | ~100% | ~100% |
+| 1000 | **100%** | 0% | ~0% | ~100% | ~100% |
 
-### Scaling (alpha=0.7, SA num_reads=200)
+- **SA-hard**: Wishart (alpha=0.7), Quiet Planting (N>300)
+- **SA-easy**: Posiform, Zero Expectation, Hard Mode
 
-| N   | SA 성공률 | 에너지 정확도 |
-|-----|----------|-------------|
-| 50  | 100%     | 100%        |
-| 100 | 0%       | 92.0%       |
-| 300 | 0%       | 91.6%       |
-| 500 | 0%       | 91.3%       |
-
-- **N=50→100 사이에서 상전이**: N=100부터 SA 완전 실패
-- **에너지 정확도 ~91%로 포화**: SA가 metastable 상태에 갇혀 ground state 대비 ~9% gap 유지
-- **해밍거리 ≈ N/2**: SA가 찾은 해는 정답과 무관 (랜덤 수준)
-
-### Wishart vs Hard Mode (N=100)
-
-| 방식 | SA 성공률 |
-|------|----------|
-| Wishart (alpha=0.7) | **10%** |
-| Hard Mode (noise=0.1) | 100% |
+자세한 분석: [`docs/POSIFORM_EXPERIMENT.md`](docs/POSIFORM_EXPERIMENT.md), [`docs/QUIET_PLANTING_EXPERIMENT.md`](docs/QUIET_PLANTING_EXPERIMENT.md)
 
 ## 문서
 
-- **[실험 결과 보고서](docs/WISHART_EXPERIMENT.md)** — 알고리즘 상세, 전체 실험 데이터, 분석
-- **[설계 근거](docs/DESIGN_RATIONALE.md)** — Ising vs QUBO 설계, 구별 가능성 vs 계산 난이도, QPU 전망
+| 문서 | 내용 |
+|------|------|
+| [Posiform 실험 보고서](docs/POSIFORM_EXPERIMENT.md) | N=1000까지 100% 성공, SA-easy 분석 |
+| [Quiet Planting 실험 보고서](docs/QUIET_PLANTING_EXPERIMENT.md) | 축퇴 문제, planted field, SA 상전이 |
+| [각 방법론 README](posiform/README.md) | 이론, 구현, 파라미터, 참고문헌 |
 
 ## 의존성
 
