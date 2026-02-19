@@ -3,7 +3,3 @@ __pycache__/
 .idea/
 .venv/
 *.egg-info/
-
-# Large result files (>10MB)
-zero_expectation/results/qubo_00100_10110.txt
-zero_expectation/results/qubo_00100_1101.txt
