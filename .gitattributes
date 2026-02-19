@@ -1,2 +1,1 @@
-zero_expectation/results/qubo_00100_10110.txt filter=lfs diff=lfs merge=lfs -text
-zero_expectation/results/qubo_00100_1101.txt filter=lfs diff=lfs merge=lfs -text
+**/results/*.txt filter=lfs diff=lfs merge=lfs -text
