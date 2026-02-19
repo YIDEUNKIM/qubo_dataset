@@ -12,6 +12,7 @@ This repository generates **QUBO (Quadratic Unconstrained Binary Optimization) b
 - **Zero Expectation**: The generated Q matrix coefficients should have E[q_ii] = 0 and E[q_ij] = 0, making the problem indistinguishable from random QUBO. Achieved by LP-optimized penalty ratios (e.g., sampling E[r0], E[r0'] at 3x other values).
 - **Penalty Construction (from PDF Step 1 & 2)**: For each non-optimal (x_i, x_j) pair, add r * indicator_function as penalty. Three penalty terms per qubit pair, each with independent random r > 0.
 - **Ising Conversion**: QUBO variables x_i in {0,1} map to spins s_i in {-1,+1} via s = 2x - 1.
+- **Quiet Planting**: Planted random 3-SAT where target satisfies all clauses. Rosenberg reduction linearizes cubic penalty z1*z2*z3 into QUBO with auxiliary variable y=z1*z2. Clause density alpha=m/n; alpha < 3.86 ensures statistical indistinguishability from random 3-SAT (Krzakala & Zdeborova, 2009). **Degeneracy problem**: all SAT solutions have identical QUBO energy (penalty=0), so clause weights alone cannot distinguish the planted target. A **planted field** (small linear bias per variable) is required to break degeneracy and make the target uniquely recoverable.
 
 ## Architecture
 
@@ -24,7 +25,11 @@ This repository generates **QUBO (Quadratic Unconstrained Binary Optimization) b
   - `create_qubo_precise(target, density, model)` - Main entry point
   - `create_qubo_ising_derived(target)` - Alternative: derives QUBO from Ising model (J_ij = alpha * s_i * s_j), guarantees E[row sum] = 0
 - **`qubo_hard_mode.py`** - Backbone + frustration model. Star graph (W_STRONG=20.0) ensures ground state; random weak edges (W_WEAK=0.2) with noise_ratio probability of frustration.
-- **`qubo_wishart.py`** - **Wishart Planted Ensemble generator.** Constructs SA-hard QUBO via orthogonal Gaussian projection (W^T t = 0). Difficulty controlled by alpha=M/N parameter. Phase transition at alpha_c ≈ 0.95 (N=100). See `WISHART_EXPERIMENT.md` for details.
+- **`qubo_wishart.py`** - **Wishart Planted Ensemble generator.** Constructs SA-hard QUBO via orthogonal Gaussian projection (W^T t = 0). Difficulty controlled by alpha=M/N parameter. Phase transition at alpha_c ≈ 0.95 (N=100). See `docs/WISHART_EXPERIMENT.md` for details.
+- **`qubo_quiet_planted.py`** - **Quiet Planting generator.** Planted random 3-SAT → Rosenberg reduction → QUBO. Clause density alpha=m/n controls difficulty. QUBO size = n(1+alpha) (auxiliary variables). Key parameters:
+  - `alpha`: clause density (3.86=condensation, 4.27=SAT threshold)
+  - `clause_weight_range`: per-clause random weights (does NOT break SAT-solution degeneracy — all SAT solutions get penalty=0 regardless of weights)
+  - `field_strength`: **planted field** — adds small linear bias toward target. This IS what breaks degeneracy. Recommended 0.1~1.0. SA scaling with field=0.5: N=100(100%) → N=300(70%) → N=500(20%) → N=750+(0%). See `docs/QUIET_PLANTING_EXPERIMENT.md`
 
 ### Solvers & Converters
 - **`dwave_simple_test.py`** - Loads saved QUBO from `qubo_results/` edge-list files, solves via `neal.SimulatedAnnealingSampler`.
@@ -36,6 +41,7 @@ This repository generates **QUBO (Quadratic Unconstrained Binary Optimization) b
 - **`compare_experiment.py`** - Batch comparison: generates QUBO, solves with SA, checks exact/energy/symmetry match. Uses `neal`.
 - **`test_hard_mode.py`** - Same as compare_experiment but for hard mode QUBO.
 - **`test_wishart.py`** - SA experiment framework for Wishart ensemble: alpha sweep, N scaling, Wishart vs Hard Mode comparison, hardness metrics (TTS, spectral gap).
+- **`test_quiet_planted.py`** - SA experiment framework for Quiet Planting: alpha sweep (2.0–5.0), N scaling, 4-way comparison (Quiet vs Wishart vs ZeroExp vs HardMode).
 - **`visualize_qubo.py`** - 3D surface plot of Q matrix using matplotlib.
 
 ### Data
@@ -81,6 +87,19 @@ python3 test_wishart.py --scaling 0.7
 
 # Run Wishart vs Hard Mode comparison
 python3 test_wishart.py --compare
+
+# Generate Quiet Planting QUBO (args: target alpha [seed])
+python3 qubo_quiet_planted.py 10110 4.2
+python3 qubo_quiet_planted.py 10110 4.2 42
+
+# Run Quiet Planting alpha sweep experiment (args: n_bits [num_runs])
+python3 test_quiet_planted.py 50 10
+
+# Run Quiet Planting scaling experiment (args: --scaling [alpha])
+python3 test_quiet_planted.py --scaling 4.2
+
+# Run 4-way comparison (Quiet vs Wishart vs ZeroExp vs HardMode)
+python3 test_quiet_planted.py --compare
 
 # Check zero-expectation property of a saved QUBO
 python3 check_zero_expectation.py

@@ -238,9 +238,9 @@ if __name__ == "__main__":
         print(f"  최소 에너지:   {bf_result['best_energy']:.6f}")
         print(f"  최소 상태:     {bf_result['best_state']}")
         if bf_result['is_ground_state']:
-            print("  ✓ Ground State 검증 성공!")
+            print("Ground State 검증 성공!")
         else:
-            print(f"  ✗ Ground State 검증 실패 (gap: {bf_result['energy_gap']:.6f})")
+            print(f"Ground State 검증 실패 (gap: {bf_result['energy_gap']:.6f})")
     else:
         print(f"\n[통계적 검증] (N={n})")
         is_local, is_global, stats = verify_ground_state(Q, target)
