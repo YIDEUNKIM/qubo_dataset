@@ -8,8 +8,11 @@ TDD Step 1 (RED): 대각 항 기댓값 0 테스트
 import random
 import numpy as np
 import sys
+import os
 
-from qubo_zero_expectation import (
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from zero_expectation.qubo_zero_expectation import (
     create_qubo_precise,
     DefaultZeroExpectationModel,
     ZeroOffDiagonalModel,

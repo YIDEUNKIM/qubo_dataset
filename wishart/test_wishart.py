@@ -9,12 +9,15 @@ Wishart Planted Ensemble SA 실험 프레임워크
 import random
 import time
 import sys
+import os
 import numpy as np
 import neal
 
-from qubo_wishart import create_qubo_wishart, verify_ground_state
-from qubo_hard_mode import create_qubo_hard
-from qubo_zero_expectation import calculate_energy
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from wishart.qubo_wishart import create_qubo_wishart, verify_ground_state
+from hard_mode.qubo_hard_mode import create_qubo_hard
+from qubo_utils import calculate_energy
 
 
 def classify_result(target, found_solution, target_energy, found_energy):

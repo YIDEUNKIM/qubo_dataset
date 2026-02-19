@@ -4,9 +4,13 @@ Zero-Expectation vs Wishart Q 행렬 구조 비교 분석
 
 import numpy as np
 import random
+import sys
+import os
 
-from qubo_zero_expectation import create_qubo_precise, DefaultZeroExpectationModel
-from qubo_wishart import create_qubo_wishart
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from zero_expectation.qubo_zero_expectation import create_qubo_precise, DefaultZeroExpectationModel
+from wishart.qubo_wishart import create_qubo_wishart
 
 
 def to_matrix(Q, n):

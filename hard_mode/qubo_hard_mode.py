@@ -3,7 +3,10 @@ import random
 import sys
 import os
 import csv
-from qubo_zero_expectation import print_q_matrix, print_qubo_formula
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from qubo_utils import print_q_matrix, print_qubo_formula
 
 def create_qubo_hard(target_binary_string, density=1.0, base_range=(1, 3), noise_ratio=0.1):
     """

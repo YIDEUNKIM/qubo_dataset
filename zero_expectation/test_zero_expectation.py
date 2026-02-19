@@ -8,10 +8,14 @@ Wishart 실험(test_wishart.py)과 동일한 프레임워크로 비교 가능.
 import random
 import time
 import sys
+import os
 import numpy as np
 import neal
 
-from qubo_zero_expectation import create_qubo_precise, calculate_energy, DefaultZeroExpectationModel
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from zero_expectation.qubo_zero_expectation import create_qubo_precise, DefaultZeroExpectationModel
+from qubo_utils import calculate_energy
 
 
 def hamming_distance(a, b):

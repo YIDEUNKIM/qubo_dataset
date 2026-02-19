@@ -21,7 +21,9 @@ import sys
 import os
 import numpy as np
 
-from qubo_zero_expectation import calculate_energy, save_qubo_edgelist, print_q_matrix, print_qubo_formula
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from qubo_utils import calculate_energy, save_qubo_edgelist, print_q_matrix, print_qubo_formula
 
 
 def create_planted_3sat(target, alpha=4.2, seed=None):
@@ -488,7 +490,7 @@ if __name__ == "__main__":
         print(f"  Global minimum (추정): {'OK' if is_global else 'FAIL'}")
 
     # 결과 저장
-    output_dir = "qubo_results"
+    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
     os.makedirs(output_dir, exist_ok=True)
     filename_target = f"{target[:5]}_{n}"
     output_file = os.path.join(output_dir, f"quiet_{filename_target}_a{alpha}.txt")
