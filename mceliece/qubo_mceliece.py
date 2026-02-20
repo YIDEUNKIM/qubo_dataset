@@ -617,6 +617,7 @@ def _reduce_multibody_to_qubo(terms, k):
     Q = {}
     constant = 0.0
     next_aux = k  # 보조변수 시작 인덱스
+    penalty_log = []  # 각 보조변수의 패널티 정보 추적
 
     def add_to_Q(i, j, val):
         key = (min(i, j), max(i, j))
@@ -676,7 +677,7 @@ def _reduce_multibody_to_qubo(terms, k):
             # 3차 이상 항이 있으면 즉시 축소
             max_degree = max(len(s) for s in poly)
             while max_degree > 2:
-                poly, next_aux = _reduce_degree_once(poly, Q, next_aux)
+                poly, next_aux = _reduce_degree_once(poly, Q, next_aux, penalty_log)
                 max_degree = max(len(s) for s in poly) if poly else 0
 
         # H_j = [1 - sign · poly] / 2 = 1/2 - sign/2 · poly
@@ -700,19 +701,25 @@ def _reduce_multibody_to_qubo(terms, k):
     # 0에 가까운 항 제거
     Q = {key: val for key, val in Q.items() if abs(val) > 1e-15}
 
-    return Q, constant, num_aux
+    return Q, constant, num_aux, penalty_log
 
 
-def _reduce_degree_once(poly, Q_penalties, next_aux):
+def _reduce_degree_once(poly, Q_penalties, next_aux, penalty_log=None):
     """
     다항식에서 가장 빈번한 변수쌍을 보조변수로 대체하여 차수를 1 줄임.
 
     x_a·x_b → y (보조변수), 패널티: M·(x_a·x_b - 2·x_a·y - 2·x_b·y + 3·y)
 
+    Rosenberg 페널티 M의 이론적 하한:
+      - M > B_pair / 2 (B_pair = Σ|coeff| for terms containing both x_a, x_b)
+      - B_pair/2 = 목적함수에서 y를 잘못 설정했을 때의 최대 에너지 이득
+      - Rosenberg 위반 최소 비용 = M이므로, M > B_pair/2면 ground state 보존
+
     Args:
         poly: {frozenset(var_indices): coeff}
         Q_penalties: 전체 Q dict (패널티 추가용)
         next_aux: 다음 보조변수 인덱스
+        penalty_log: 패널티 추적 리스트 (사후 검증/조정용)
 
     Returns:
         new_poly: 축소된 다항식
@@ -737,9 +744,16 @@ def _reduce_degree_once(poly, Q_penalties, next_aux):
     y = next_aux
     next_aux += 1
 
-    # 패널티 강도 M 계산: 목적함수 항들의 최대 절댓값의 10배
-    max_coeff = max(abs(c) for c in poly.values()) if poly else 1.0
-    M = max(10.0 * max_coeff, 10.0)
+    # ===== 이론적 M 계산 =====
+    # B_pair: (xa, xb) 둘 다 포함하는 항들의 |coeff| 합
+    # 이 항들이 y로 대체 후 목적함수에서 y의 영향 범위를 결정
+    # 목적함수 기여는 H_j 공식에서 1/2로 스케일링되므로 실제 영향 = B_pair/2
+    # Rosenberg 위반 최소 비용 = M → M > B_pair/2 필요
+    # 연쇄 보조변수 효과를 고려하여 4배 안전 마진 적용: M = B_pair * 2.0
+    B_pair = sum(abs(coeff) for vars_set, coeff in poly.items()
+                 if xa in vars_set and xb in vars_set)
+
+    M = max(B_pair * 2.0, 10.0)
 
     def add_penalty(i, j, val):
         key = (min(i, j), max(i, j))
@@ -750,6 +764,21 @@ def _reduce_degree_once(poly, Q_penalties, next_aux):
     add_penalty(xa, y, -2.0 * M)
     add_penalty(xb, y, -2.0 * M)
     add_penalty(y, y, 3.0 * M)
+
+    # 패널티 정보 기록 (사후 검증/조정용)
+    if penalty_log is not None:
+        penalty_log.append({
+            'aux': y,
+            'pair': (xa, xb),
+            'M': M,
+            'B_pair': B_pair,
+            'unit_penalty': {
+                (min(xa, xb), max(xa, xb)): 1.0,
+                (min(xa, y), max(xa, y)): -2.0,
+                (min(xb, y), max(xb, y)): -2.0,
+                (y, y): 3.0,
+            },
+        })
 
     # 다항식에서 x_a·x_b를 y로 대체
     new_poly = {}
@@ -762,6 +791,88 @@ def _reduce_degree_once(poly, Q_penalties, next_aux):
             new_poly[vars_set] = new_poly.get(vars_set, 0) + coeff
 
     return new_poly, next_aux
+
+
+# ============================================================
+# 4.5. 사후 검증 & 자동 보정
+# ============================================================
+
+def _verify_and_adjust_penalties(Q, target, k, num_aux, penalty_log, max_rounds=10):
+    """
+    Ground state 보존 검증: 각 보조변수의 single-flip 안정성 확인.
+    불안정한 보조변수 발견 시 해당 페널티를 2배씩 증가.
+
+    이론적 배경:
+      Rosenberg 페널티 M이 충분하면, target + 최적 aux에서
+      어떤 보조변수 하나를 뒤집어도 에너지가 증가해야 함.
+      만약 감소하면 M이 부족하다는 의미.
+
+    Args:
+        Q: QUBO dict (in-place 수정됨)
+        target: 원래 메시지 비트스트링
+        k: 메시지 변수 수
+        num_aux: 보조변수 수
+        penalty_log: _reduce_degree_once에서 기록한 패널티 정보
+        max_rounds: 최대 보정 라운드 수
+
+    Returns:
+        (adjusted, full_target, rounds)
+        adjusted: 보정 여부
+        full_target: 최종 target + aux 비트스트링
+        rounds: 실행된 보정 라운드 수
+    """
+    total = k + num_aux
+    any_adjusted = False
+
+    for round_num in range(max_rounds):
+        # 현재 Q에서 보조변수 최적값 재계산
+        aux_str = _compute_aux_values(Q, target, k, num_aux)
+        full_target = target + aux_str
+
+        round_adjusted = False
+
+        for aux_idx in range(k, total):
+            # 매 flip마다 최신 에너지 사용 (Q가 루프 내에서 변할 수 있음)
+            current_energy = calculate_energy(full_target, Q)
+            flipped = list(full_target)
+            flipped[aux_idx] = '0' if flipped[aux_idx] == '1' else '1'
+            flipped_energy = calculate_energy(''.join(flipped), Q)
+            delta = flipped_energy - current_energy
+
+            if delta < 1e-10:
+                # 보조변수 불안정 → 해당 페널티 2배로 증가
+                found = False
+                for entry in penalty_log:
+                    if entry['aux'] == aux_idx:
+                        old_M = entry['M']
+                        delta_M = old_M  # 현재 M만큼 추가 → 총 2배
+                        for (i, j), unit_val in entry['unit_penalty'].items():
+                            Q[(i, j)] = Q.get((i, j), 0) + unit_val * delta_M
+                        entry['M'] = old_M * 2.0
+                        round_adjusted = True
+                        any_adjusted = True
+                        found = True
+                        break
+                if not found:
+                    import warnings
+                    warnings.warn(
+                        f"보조변수 {aux_idx}가 불안정하지만 penalty_log에 없음. "
+                        f"delta={delta:.6f}"
+                    )
+
+        if not round_adjusted:
+            return any_adjusted, full_target, round_num
+
+    # max_rounds 도달: 수렴 실패
+    import warnings
+    warnings.warn(
+        f"페널티 보정이 {max_rounds}라운드 내에 수렴하지 않음. "
+        f"Ground state 보존이 보장되지 않을 수 있음."
+    )
+    # 최종 aux 재계산
+    aux_str = _compute_aux_values(Q, target, k, num_aux)
+    full_target = target + aux_str
+    return any_adjusted, full_target, max_rounds
 
 
 # ============================================================
@@ -844,12 +955,13 @@ def create_qubo_mceliece(target, m=None, t=2, seed=None):
     terms = _ciphertext_to_ising_terms(G_sys, ciphertext, k)
 
     # 6. QUBO 변환 (차수 축소 포함)
-    Q, constant, num_aux = _reduce_multibody_to_qubo(terms, k)
+    Q, constant, num_aux, penalty_log = _reduce_multibody_to_qubo(terms, k)
 
-    # target에서의 에너지 계산
-    # 보조변수의 최적값 결정
-    aux_str = _compute_aux_values(Q, target, k, num_aux)
-    full_target = target + aux_str
+    # 7. 사후 검증 & 자동 보정
+    #    각 보조변수의 single-flip 안정성 확인, 불안정 시 페널티 자동 증가
+    adjusted, full_target, adj_rounds = _verify_and_adjust_penalties(
+        Q, target, k, num_aux, penalty_log
+    )
     target_energy = calculate_energy(full_target, Q)
 
     info = {
@@ -864,6 +976,10 @@ def create_qubo_mceliece(target, m=None, t=2, seed=None):
         'error_weight': int(np.sum(error)),
         'goppa_poly': goppa_poly,
         'full_target': full_target,
+        'penalty_adjusted': adjusted,
+        'penalty_adj_rounds': adj_rounds,
+        'penalty_converged': adj_rounds < 10,  # max_rounds 내 수렴 여부
+        'penalty_M_values': [e['M'] for e in penalty_log],
     }
 
     return Q, info
@@ -1079,6 +1195,20 @@ if __name__ == "__main__":
     print(f"  보조변수 수: {info['num_aux']}")
     print(f"  전체 QUBO 변수: {info['total_vars']}")
     print(f"  QUBO 비영 항 수: {len(Q)}")
+
+    # 페널티 정보
+    if info['penalty_M_values']:
+        M_vals = info['penalty_M_values']
+        print(f"\n[페널티 M 정보]")
+        print(f"  보조변수 수: {len(M_vals)}")
+        print(f"  M 범위: {min(M_vals):.1f} ~ {max(M_vals):.1f}")
+        if info['penalty_adjusted']:
+            if info['penalty_converged']:
+                print(f"  사후 보정: 있음 (라운드 {info['penalty_adj_rounds']}에서 수렴)")
+            else:
+                print(f"  사후 보정: 경고! {info['penalty_adj_rounds']}라운드 내 미수렴")
+        else:
+            print(f"  사후 보정: 불필요 (초기 M 충분)")
 
     # 행렬 출력 (작을 때만)
     if info['total_vars'] <= 12:

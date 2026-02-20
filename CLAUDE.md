@@ -44,9 +44,14 @@ qubo_dataset/
 │   ├── test_quiet_planted.py              ← SA 실험 (alpha sweep, scaling, 4-way comparison)
 │   └── results/                           ← 생성된 QUBO 파일
 │
-└── posiform/                               ← Posiform Planting (2-SAT → Posiform)
-    ├── qubo_posiform.py                   ← 생성기
-    ├── test_posiform.py                   ← SA 실험 (scaling, coeff sweep, 5-way comparison)
+├── posiform/                               ← Posiform Planting (2-SAT → Posiform)
+│   ├── qubo_posiform.py                   ← 생성기
+│   ├── test_posiform.py                   ← SA 실험 (scaling, coeff sweep, 5-way comparison)
+│   └── results/                           ← 생성된 QUBO 파일
+│
+└── posiform_hardened/                      ← Hardened Posiform (Random QUBO + Posiform overlay)
+    ├── qubo_posiform_hardened.py           ← 생성기 (Pelofske 2024)
+    ├── test_posiform_hardened.py           ← SA 실험 (sweep, scaling, comparison)
     └── results/                           ← 생성된 QUBO 파일
 ```
 
@@ -77,6 +82,10 @@ qubo_dataset/
   - `posiform_to_qubo(n, clauses, coeff_range)`: wrong tuple 배제 → posiform → QUBO 변환
   - `create_qubo_posiform(target, coeff_range, seed)`: 메인 진입점
   - `coeff_range`: posiform 계수 범위 (default (1.0, 3.0))
+- **`posiform_hardened/qubo_posiform_hardened.py`** - **Hardened Posiform Planting generator.** Pelofske, Hahn, Djidjev (2024) 기반: 변수를 disjoint subgraph로 분할 → 각 subgraph에 random QUBO 생성 → subproblem ground state concatenate → posiform overlay. `Q_final = Σ R_i + α × P`. Key parameters:
+  - `posiform_scale` (α): 작을수록 어려움 (0.01 = hardest)
+  - `coeff_type`: 'lin2' ({-1,+1}) vs 'lin20' (21단계)
+  - `subgraph_size`: 각 subgraph 변수 수 (default 15, brute force 가능)
 
 ### Analysis & Verification
 - **`zero_expectation/test_zero_expectation.py`** - SA scaling experiment for Zero-Expectation QUBO.
@@ -85,6 +94,7 @@ qubo_dataset/
 - **`wishart/test_wishart.py`** - SA experiment framework for Wishart ensemble: alpha sweep, N scaling, Wishart vs Hard Mode comparison, hardness metrics (TTS, spectral gap).
 - **`quiet_planting/test_quiet_planted.py`** - SA experiment framework for Quiet Planting: alpha sweep (2.0–5.0), N scaling, 4-way comparison (Quiet vs Wishart vs ZeroExp vs HardMode).
 - **`posiform/test_posiform.py`** - SA experiment framework for Posiform Planting: N scaling, coefficient range sweep, 5-way comparison (Posiform vs Quiet vs Wishart vs ZeroExp vs HardMode).
+- **`posiform_hardened/test_posiform_hardened.py`** - SA experiment framework for Hardened Posiform: sweep transition, N scaling, hardened vs plain comparison.
 
 ### Data
 - **`<method>/results/`** - 각 방법론별 생성된 QUBO 파일. CSV edge-list 형식 (`# target,<bitstring>\ni,j,weight\n...`). 각 생성기가 자신의 `results/` 디렉토리에 자동 저장.
