@@ -10,7 +10,7 @@ import neal
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from posiform.qubo_posiform_hardened import create_qubo_hardened_posiform
+from posiform_hardened.qubo_posiform_hardened import create_qubo_hardened_posiform
 from posiform.qubo_posiform import create_qubo_posiform
 from qubo_utils import calculate_energy
 
