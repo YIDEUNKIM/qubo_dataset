@@ -19,12 +19,7 @@ qubo_dataset/
 ├── zero_expectation/             # Zero Expectation (E[q_ij]=0 보장)
 │   ├── qubo_zero_expectation.py
 │   ├── test_zero_expectation.py
-│   ├── results/                  # 생성된 QUBO 파일
-│   └── README.md
-│
-├── hard_mode/                    # Backbone + Frustration
-│   ├── qubo_hard_mode.py
-│   ├── papers/
+│   ├── results/
 │   └── README.md
 │
 ├── wishart/                      # Wishart Planted Ensemble (SA-hard)
@@ -41,9 +36,16 @@ qubo_dataset/
 │   ├── papers/
 │   └── README.md
 │
-└── posiform/                     # Posiform Planting (2-SAT → Posiform)
-    ├── qubo_posiform.py
-    ├── test_posiform.py
+├── posiform/                     # Posiform Planting (2-SAT → Posiform)
+│   ├── qubo_posiform.py
+│   ├── test_posiform.py
+│   ├── results/
+│   ├── papers/
+│   └── README.md
+│
+└── hardened_posiform/            # Hardened Posiform (Random QUBO + Posiform)
+    ├── qubo_posiform_hardened.py
+    ├── test_posiform_hardened.py
     ├── results/
     ├── papers/
     └── README.md
@@ -56,16 +58,19 @@ qubo_dataset/
 | 생성기 | QUBO 크기 | Ground State | SA 난이도 | 구별 불가능 | 핵심 논문 |
 |--------|:---------:|:-----------:|:---------:|:----------:|----------|
 | **Wishart** | n | 수학적 보장 (유한정밀도 제외) | **SA-hard** (alpha~0.7) | X (low-rank) | Hamze et al. 2020 |
+| **Hardened Posiform** | n | **수학적 보장 (유일)** | easy~moderate (α 의존) | 미분석 | Pelofske et al. 2024 |
 | **Quiet Planting** | n(1+alpha) | 축퇴 (field 필요) | field 의존적 | O (alpha<3.86) | Krzakala & Zdeborova 2009 |
 | **Posiform** | n | **수학적 보장 (유일)** | SA-easy | 미분석 | Hahn et al. 2023 |
 | **Zero Expectation** | n(n-1)/2 | LP 최적화 | SA-easy | O (E[q_ij]=0) | 내부 연구 |
-| **Hard Mode** | sparse | 조건부 보장 | SA-easy | X (backbone 노출) | - |
 
 ## Quick Start
 
 ```bash
 # Posiform: 보조변수 없이 유일한 ground state 보장
 python3 posiform/qubo_posiform.py 10110
+
+# Hardened Posiform: posiform + random QUBO 결합으로 난이도 증가
+python3 hardened_posiform/qubo_posiform_hardened.py 500 lin2 0.01 42
 
 # Wishart: SA-hard QUBO (alpha=0.7이 가장 어려움)
 python3 wishart/qubo_wishart.py 10110 0.7
@@ -75,9 +80,6 @@ python3 quiet_planting/qubo_quiet_planted.py 10110 4.2
 
 # Zero Expectation: E[q_ij]=0 보장
 python3 zero_expectation/qubo_zero_expectation.py 10110
-
-# Hard Mode: 비교 기준선
-python3 hard_mode/qubo_hard_mode.py 10110
 ```
 
 ## SA 실험
@@ -86,13 +88,16 @@ python3 hard_mode/qubo_hard_mode.py 10110
 # Posiform N 스케일링 (10 runs)
 python3 posiform/test_posiform.py --scaling 10
 
+# Hardened Posiform sweep 전이 실험
+python3 hardened_posiform/test_posiform_hardened.py --sweep 10
+
 # Wishart alpha sweep (N=100, 10 runs)
 python3 wishart/test_wishart.py 100 10
 
 # Quiet Planting N 스케일링
 python3 quiet_planting/test_quiet_planted.py --scaling 4.2
 
-# 5-way 비교 (Posiform vs Quiet vs Wishart vs ZeroExp vs HardMode)
+# 4-way 비교 (Posiform vs Quiet vs Wishart vs ZeroExp)
 python3 posiform/test_posiform.py --compare
 ```
 
@@ -100,14 +105,15 @@ python3 posiform/test_posiform.py --compare
 
 ### SA 성공률 비교 (num_reads=1~200)
 
-| N | Posiform | Quiet (field=0.5) | Wishart (alpha=0.7) | ZeroExp | HardMode |
-|---:|:--------:|:-----------------:|:-------------------:|:-------:|:--------:|
-| 100 | **100%** | 100% | ~10% | ~100% | ~100% |
-| 500 | **100%** | 20% | ~0% | ~100% | ~100% |
-| 1000 | **100%** | 0% | ~0% | ~100% | ~100% |
+| N | Posiform | Hardened (lin2,α=0.01) | Quiet (field=0.5) | Wishart (alpha=0.7) | ZeroExp |
+|---:|:--------:|:---------------------:|:-----------------:|:-------------------:|:-------:|
+| 100 | **100%** | ~100% | 100% | ~10% | ~100% |
+| 500 | **100%** | **~13%** (500 sweeps) | 20% | ~0% | ~100% |
+| 1000 | **100%** | - | 0% | ~0% | ~100% |
 
 - **SA-hard**: Wishart (alpha=0.7), Quiet Planting (N>300)
-- **SA-easy**: Posiform, Zero Expectation, Hard Mode
+- **SA-moderate**: Hardened Posiform (lin2, α=0.01)
+- **SA-easy**: Posiform, Zero Expectation
 
 자세한 분석: [`docs/POSIFORM_EXPERIMENT.md`](docs/POSIFORM_EXPERIMENT.md), [`docs/QUIET_PLANTING_EXPERIMENT.md`](docs/QUIET_PLANTING_EXPERIMENT.md)
 

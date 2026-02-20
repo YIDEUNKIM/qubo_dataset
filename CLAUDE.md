@@ -31,9 +31,6 @@ qubo_dataset/
 │   ├── analyze_q_structure.py             ← Q 행렬 구조 비교 (ZeroExp vs Wishart)
 │   └── results/                           ← 생성된 QUBO 파일
 │
-├── hard_mode/                              ← Hard Mode (Backbone + Frustration)
-│   └── qubo_hard_mode.py                  ← 생성기
-│
 ├── wishart/                                ← Wishart Planted Ensemble
 │   ├── qubo_wishart.py                    ← 생성기
 │   ├── test_wishart.py                    ← SA 실험 (alpha sweep, scaling, comparison)
@@ -44,9 +41,15 @@ qubo_dataset/
 │   ├── test_quiet_planted.py              ← SA 실험 (alpha sweep, scaling, 4-way comparison)
 │   └── results/                           ← 생성된 QUBO 파일
 │
-└── posiform/                               ← Posiform Planting (2-SAT → Posiform)
-    ├── qubo_posiform.py                   ← 생성기
-    ├── test_posiform.py                   ← SA 실험 (scaling, coeff sweep, 5-way comparison)
+├── posiform/                               ← Posiform Planting (2-SAT → Posiform)
+│   ├── qubo_posiform.py                   ← 생성기 (기본 posiform)
+│   ├── test_posiform.py                   ← SA 실험 (scaling, coeff sweep, 5-way comparison)
+│   └── results/                           ← 생성된 QUBO 파일
+│
+└── hardened_posiform/                      ← Hardened Posiform (Random QUBO + Posiform)
+    ├── qubo_posiform_hardened.py          ← 생성기 (Pelofske, Hahn, Djidjev 2024)
+    ├── test_posiform_hardened.py          ← SA 실험 (sweep 전이, N-scaling, 비교)
+    ├── papers/                            ← 참고 논문 PDF
     └── results/                           ← 생성된 QUBO 파일
 ```
 
@@ -65,7 +68,6 @@ qubo_dataset/
   - `SimpleUniformModel` - Equal penalty for all wrong states (baseline comparison)
   - `create_qubo_precise(target, density, model)` - Main entry point
   - `create_qubo_ising_derived(target)` - Alternative: derives QUBO from Ising model (J_ij = alpha * s_i * s_j), guarantees E[row sum] = 0
-- **`hard_mode/qubo_hard_mode.py`** - Backbone + frustration model. Star graph (W_STRONG=20.0) ensures ground state; random weak edges (W_WEAK=0.2) with noise_ratio probability of frustration.
 - **`wishart/qubo_wishart.py`** - **Wishart Planted Ensemble generator.** Constructs SA-hard QUBO via orthogonal Gaussian projection (W^T t = 0). Difficulty controlled by alpha=M/N parameter. Phase transition at alpha_c ≈ 0.95 (N=100). See `docs/WISHART_EXPERIMENT.md` for details.
 - **`quiet_planting/qubo_quiet_planted.py`** - **Quiet Planting generator.** Planted random 3-SAT → Rosenberg reduction → QUBO. Clause density alpha=m/n controls difficulty. QUBO size = n(1+alpha) (auxiliary variables). Key parameters:
   - `alpha`: clause density (3.86=condensation, 4.27=SAT threshold)
@@ -77,14 +79,20 @@ qubo_dataset/
   - `posiform_to_qubo(n, clauses, coeff_range)`: wrong tuple 배제 → posiform → QUBO 변환
   - `create_qubo_posiform(target, coeff_range, seed)`: 메인 진입점
   - `coeff_range`: posiform 계수 범위 (default (1.0, 3.0))
+- **`hardened_posiform/qubo_posiform_hardened.py`** - **Hardened Posiform Planting generator.** Pelofske, Hahn, Djidjev (2024) 기반: discrete coefficient random QUBO + posiform QUBO 결합 (Q_final = Σ R_i + α × P). 기본 posiform의 SA-easy 한계를 극복. Ground state 유일성 수학적 보장. Key parameters:
+  - `posiform_scale` (α): 작을수록 어려움 (0.01 hardest, 0.1 easier)
+  - `coeff_type`: 'lin2' ({-1,+1}) vs 'lin20' ({-1,-0.9,...,0.9,1}) — lin2가 더 어려움
+  - `max_subgraph_size`: brute force 가능 크기 (≤23, default 15)
+  - SA sweep 전이 (N=500): lin2,α=0.01은 5000 sweeps에서도 29.8% 성공률
 
 ### Analysis & Verification
 - **`zero_expectation/test_zero_expectation.py`** - SA scaling experiment for Zero-Expectation QUBO.
 - **`zero_expectation/test_diagonal_zero.py`** - Diagonal bias analysis + impossibility proof.
 - **`zero_expectation/analyze_q_structure.py`** - Q matrix structure comparison (ZeroExp vs Wishart).
-- **`wishart/test_wishart.py`** - SA experiment framework for Wishart ensemble: alpha sweep, N scaling, Wishart vs Hard Mode comparison, hardness metrics (TTS, spectral gap).
-- **`quiet_planting/test_quiet_planted.py`** - SA experiment framework for Quiet Planting: alpha sweep (2.0–5.0), N scaling, 4-way comparison (Quiet vs Wishart vs ZeroExp vs HardMode).
-- **`posiform/test_posiform.py`** - SA experiment framework for Posiform Planting: N scaling, coefficient range sweep, 5-way comparison (Posiform vs Quiet vs Wishart vs ZeroExp vs HardMode).
+- **`wishart/test_wishart.py`** - SA experiment framework for Wishart ensemble: alpha sweep, N scaling, hardness metrics (TTS, spectral gap).
+- **`quiet_planting/test_quiet_planted.py`** - SA experiment framework for Quiet Planting: alpha sweep (2.0–5.0), N scaling, 3-way comparison (Quiet vs Wishart vs ZeroExp).
+- **`posiform/test_posiform.py`** - SA experiment framework for Posiform Planting: N scaling, coefficient range sweep, 4-way comparison (Posiform vs Quiet vs Wishart vs ZeroExp).
+- **`hardened_posiform/test_posiform_hardened.py`** - SA experiment framework for Hardened Posiform: sweep transition (S-curve), N-scaling, hardened vs plain comparison.
 
 ### Data
 - **`<method>/results/`** - 각 방법론별 생성된 QUBO 파일. CSV edge-list 형식 (`# target,<bitstring>\ni,j,weight\n...`). 각 생성기가 자신의 `results/` 디렉토리에 자동 저장.
@@ -104,9 +112,6 @@ python3 zero_expectation/qubo_zero_expectation.py 50
 # Generate with Ising-derived row-balanced mode
 python3 zero_expectation/qubo_zero_expectation.py 10110 balance
 
-# Generate hard mode QUBO (args: target_or_length [noise_ratio])
-python3 hard_mode/qubo_hard_mode.py 11001 0.1
-
 # Generate Wishart planted ensemble QUBO (args: target alpha [seed])
 python3 wishart/qubo_wishart.py 10110 0.7
 python3 wishart/qubo_wishart.py 10110 0.7 42
@@ -116,9 +121,6 @@ python3 wishart/test_wishart.py 100 10
 
 # Run Wishart scaling experiment (args: --scaling [alpha])
 python3 wishart/test_wishart.py --scaling 0.7
-
-# Run Wishart vs Hard Mode comparison
-python3 wishart/test_wishart.py --compare
 
 # Generate Quiet Planting QUBO (args: target alpha [seed])
 python3 quiet_planting/qubo_quiet_planted.py 10110 4.2
@@ -130,7 +132,7 @@ python3 quiet_planting/test_quiet_planted.py 50 10
 # Run Quiet Planting scaling experiment (args: --scaling [alpha])
 python3 quiet_planting/test_quiet_planted.py --scaling 4.2
 
-# Run 4-way comparison (Quiet vs Wishart vs ZeroExp vs HardMode)
+# Run 3-way comparison (Quiet vs Wishart vs ZeroExp)
 python3 quiet_planting/test_quiet_planted.py --compare
 
 # Generate Posiform Planting QUBO (args: target [seed])
@@ -143,8 +145,21 @@ python3 posiform/test_posiform.py --scaling 10
 # Run Posiform coefficient range sweep (args: --coeff [num_runs])
 python3 posiform/test_posiform.py --coeff 10
 
-# Run 5-way comparison (Posiform vs Quiet vs Wishart vs ZeroExp vs HardMode)
+# Run 4-way comparison (Posiform vs Quiet vs Wishart vs ZeroExp)
 python3 posiform/test_posiform.py --compare
+
+# Generate Hardened Posiform QUBO (args: n [coeff_type] [posiform_scale] [seed])
+python3 hardened_posiform/qubo_posiform_hardened.py 500 lin2 0.01 42
+python3 hardened_posiform/qubo_posiform_hardened.py 100 lin20 0.1
+
+# Run Hardened Posiform sweep transition experiment
+python3 hardened_posiform/test_posiform_hardened.py --sweep 10
+
+# Run Hardened Posiform N-scaling experiment
+python3 hardened_posiform/test_posiform_hardened.py --scaling 10
+
+# Run Hardened vs Plain Posiform comparison
+python3 hardened_posiform/test_posiform_hardened.py --compare 10
 
 # Run Zero-Expectation SA scaling experiment
 python3 zero_expectation/test_zero_expectation.py 10,20,50,100 10

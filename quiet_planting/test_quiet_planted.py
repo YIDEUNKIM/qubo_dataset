@@ -3,7 +3,7 @@ Quiet Planting SA 실험 프레임워크
 
 실험 1: Alpha sweep — clause density에 따른 SA 성공률 변화
 실험 2: Scaling — 고정 alpha에서 N 증가에 따른 성공률 변화
-실험 3: 4-way 비교 — Quiet vs Wishart vs ZeroExp vs HardMode
+실험 3: 3-way 비교 — Quiet vs Wishart vs ZeroExp
 """
 
 import random
@@ -21,7 +21,6 @@ from quiet_planting.qubo_quiet_planted import (
     extract_original_solution,
 )
 from wishart.qubo_wishart import create_qubo_wishart
-from hard_mode.qubo_hard_mode import create_qubo_hard
 from qubo_utils import calculate_energy
 from zero_expectation.qubo_zero_expectation import create_qubo_precise
 
@@ -216,17 +215,16 @@ def run_scaling_experiment(sizes=None, alpha=4.2, num_runs=10,
 
 
 def run_comparison_experiment(n_bits=50, num_runs=10, quiet_alpha=4.2,
-                               wishart_alpha=0.7, noise_ratio=0.1,
+                               wishart_alpha=0.7,
                                num_reads=200, num_sweeps=1000):
     """
-    4-way 비교: Quiet Planting vs Wishart vs ZeroExp vs HardMode.
+    3-way 비교: Quiet Planting vs Wishart vs ZeroExp.
     """
     print("=" * 100)
-    print(f"4-Way 비교 실험")
+    print(f"3-Way 비교 실험")
     print(f"N={n_bits}, num_runs={num_runs}")
     print(f"  Quiet: alpha={quiet_alpha}")
     print(f"  Wishart: alpha={wishart_alpha}")
-    print(f"  HardMode: noise={noise_ratio}")
     print(f"  ZeroExp: density=1.0")
     print("=" * 100)
 
@@ -236,17 +234,13 @@ def run_comparison_experiment(n_bits=50, num_runs=10, quiet_alpha=4.2,
     quiet_total = n_bits + quiet_m
     quiet_sweeps = max(1000, 10 * quiet_total)
 
-    counts = {
-        'Quiet': {"EXACT": 0, "ENERGY_MATCH": 0, "FAIL": 0},
-        'Wishart': {"EXACT": 0, "ENERGY_MATCH": 0, "FAIL": 0},
-        'ZeroExp': {"EXACT": 0, "ENERGY_MATCH": 0, "FAIL": 0},
-        'HardMode': {"EXACT": 0, "ENERGY_MATCH": 0, "FAIL": 0},
-    }
+    methods = ['Quiet', 'Wishart', 'ZeroExp']
+    counts = {m: {"EXACT": 0, "ENERGY_MATCH": 0, "FAIL": 0} for m in methods}
     hammings = {k: [] for k in counts}
 
     print(f"\n{'Run':<4} | {'Quiet':<12} | {'Q_Ham':<6} | {'Wishart':<12} | {'W_Ham':<6} | "
-          f"{'ZeroExp':<12} | {'Z_Ham':<6} | {'HardMode':<12} | {'H_Ham':<6}")
-    print("-" * 105)
+          f"{'ZeroExp':<12} | {'Z_Ham':<6}")
+    print("-" * 80)
 
     for run in range(num_runs):
         target = ''.join(str(random.randint(0, 1)) for _ in range(n_bits))
@@ -265,7 +259,6 @@ def run_comparison_experiment(n_bits=50, num_runs=10, quiet_alpha=4.2,
         ss_w = sampler.sample_qubo(Q_w, num_reads=num_reads, num_sweeps=num_sweeps)
         found_w = ''.join(str(ss_w.first.sample[k]) for k in range(n_bits))
         result_w = classify_result(target, found_w, te_w, ss_w.first.energy)
-        # Wishart는 Z2 대칭 있음
         inverse_w = ''.join('0' if b == '1' else '1' for b in target)
         if found_w == inverse_w:
             result_w = "SYM_MATCH"
@@ -279,27 +272,18 @@ def run_comparison_experiment(n_bits=50, num_runs=10, quiet_alpha=4.2,
         result_z = classify_result(target, found_z, te_z, ss_z.first.energy)
         hdist_z = hamming_distance(target, found_z)
 
-        # --- Hard Mode ---
-        Q_h = create_qubo_hard(target, noise_ratio=noise_ratio)
-        te_h = calculate_energy(target, Q_h)
-        ss_h = sampler.sample_qubo(Q_h, num_reads=num_reads, num_sweeps=num_sweeps)
-        found_h = ''.join(str(ss_h.first.sample[k]) for k in range(n_bits))
-        result_h = classify_result(target, found_h, te_h, ss_h.first.energy)
-        hdist_h = hamming_distance(target, found_h)
-
         # 집계
         for name, result, hdist in [
             ('Quiet', result_q, hdist_q),
             ('Wishart', result_w, hdist_w),
             ('ZeroExp', result_z, hdist_z),
-            ('HardMode', result_h, hdist_h),
         ]:
             r_key = "EXACT" if result in ("EXACT", "SYM_MATCH") else result
             counts[name][r_key] += 1
             hammings[name].append(hdist)
 
         print(f"{run+1:<4} | {result_q:<12} | {hdist_q:<6} | {result_w:<12} | {hdist_w:<6} | "
-              f"{result_z:<12} | {hdist_z:<6} | {result_h:<12} | {hdist_h:<6}")
+              f"{result_z:<12} | {hdist_z:<6}")
 
     # 요약
     print("\n" + "=" * 80)
@@ -309,7 +293,7 @@ def run_comparison_experiment(n_bits=50, num_runs=10, quiet_alpha=4.2,
           f"{'FAIL':<6} | {'Avg Hamming':<12}")
     print("-" * 65)
 
-    for name in ['Quiet', 'Wishart', 'ZeroExp', 'HardMode']:
+    for name in methods:
         c = counts[name]
         success = c.get('EXACT', 0)
         success_rate = 100.0 * success / num_runs

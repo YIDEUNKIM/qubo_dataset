@@ -3,7 +3,6 @@ Wishart Planted Ensemble SA 실험 프레임워크
 
 실험 1: Alpha sweep — easy-hard-easy 상전이 프로파일 확인
 실험 2: Scaling — hard alpha에서 N 증가 시 성공률 지수적 감소 확인
-실험 3: 기존 hard_mode 대비 비교
 """
 
 import random
@@ -16,7 +15,6 @@ import neal
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from wishart.qubo_wishart import create_qubo_wishart, verify_ground_state
-from hard_mode.qubo_hard_mode import create_qubo_hard
 from qubo_utils import calculate_energy
 
 
@@ -272,62 +270,13 @@ def hardness_metrics(Q, target, sampler, num_reads=1000, num_sweeps=1000):
     }
 
 
-def run_comparison_experiment(n_bits=100, num_runs=10, alpha=0.7, noise_ratio=0.1,
-                               num_reads=200, num_sweeps=1000):
-    """
-    Wishart vs Hard Mode 비교 실험.
-    """
-    print("=" * 90)
-    print(f"Wishart vs Hard Mode 비교 실험")
-    print(f"N={n_bits}, num_runs={num_runs}, Wishart alpha={alpha}, Hard noise={noise_ratio}")
-    print("=" * 90)
-
-    sampler = neal.SimulatedAnnealingSampler()
-
-    wishart_success = 0
-    hard_success = 0
-
-    print(f"\n{'Run':<4} | {'Wishart':<12} | {'W_Hamming':<10} | {'Hard Mode':<12} | {'H_Hamming':<10}")
-    print("-" * 60)
-
-    for run in range(num_runs):
-        target = ''.join(str(random.randint(0, 1)) for _ in range(n_bits))
-
-        # Wishart
-        Q_w = create_qubo_wishart(target, alpha=alpha)
-        te_w = calculate_energy(target, Q_w)
-        ss_w = sampler.sample_qubo(Q_w, num_reads=num_reads, num_sweeps=num_sweeps)
-        found_w = ''.join(str(ss_w.first.sample[k]) for k in range(n_bits))
-        result_w = classify_result(target, found_w, te_w, ss_w.first.energy)
-        hdist_w = hamming_distance(target, found_w)
-
-        # Hard Mode
-        Q_h = create_qubo_hard(target, noise_ratio=noise_ratio)
-        te_h = calculate_energy(target, Q_h)
-        ss_h = sampler.sample_qubo(Q_h, num_reads=num_reads, num_sweeps=num_sweeps)
-        found_h = ''.join(str(ss_h.first.sample[k]) for k in range(n_bits))
-        result_h = classify_result(target, found_h, te_h, ss_h.first.energy)
-        hdist_h = hamming_distance(target, found_h)
-
-        if result_w in ("EXACT", "SYM_MATCH"):
-            wishart_success += 1
-        if result_h in ("EXACT", "SYM_MATCH"):
-            hard_success += 1
-
-        print(f"{run+1:<4} | {result_w:<12} | {hdist_w:<10} | {result_h:<12} | {hdist_h:<10}")
-
-    print(f"\n[비교 결과]")
-    print(f"  Wishart (alpha={alpha}): {wishart_success}/{num_runs} ({100*wishart_success/num_runs:.1f}%)")
-    print(f"  Hard Mode (noise={noise_ratio}): {hard_success}/{num_runs} ({100*hard_success/num_runs:.1f}%)")
-
-
 if __name__ == "__main__":
     random.seed(42)
     np.random.seed(42)
 
     n_bits = 100
     num_runs = 10
-    mode = "alpha"  # alpha / scaling / compare / metrics
+    mode = "alpha"  # alpha / scaling / metrics
 
     if len(sys.argv) > 1:
         if sys.argv[1] == "--scaling":
@@ -336,8 +285,6 @@ if __name__ == "__main__":
                 alpha_arg = float(sys.argv[2])
             else:
                 alpha_arg = 0.7
-        elif sys.argv[1] == "--compare":
-            mode = "compare"
         elif sys.argv[1] == "--metrics":
             mode = "metrics"
         else:
@@ -362,14 +309,6 @@ if __name__ == "__main__":
             num_runs=10,
             num_reads=200,
             num_sweeps=1000,
-        )
-
-    elif mode == "compare":
-        run_comparison_experiment(
-            n_bits=n_bits,
-            num_runs=num_runs,
-            alpha=0.7,
-            noise_ratio=0.1,
         )
 
     elif mode == "metrics":
