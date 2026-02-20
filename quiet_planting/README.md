@@ -179,6 +179,6 @@ python3 quiet_planting/test_quiet_planted.py 50 10
 # N 스케일링 실험
 python3 quiet_planting/test_quiet_planted.py --scaling 4.2
 
-# 4-way 비교 (Quiet vs Wishart vs ZeroExp vs HardMode)
+# 3-way 비교 (Quiet vs Wishart vs ZeroExp)
 python3 quiet_planting/test_quiet_planted.py --compare
 ```

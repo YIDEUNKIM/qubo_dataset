@@ -3,7 +3,7 @@ Posiform Planting SA 실험 프레임워크
 
 실험 1: Scaling — N 증가에 따른 SA 성공률 변화 (Posiform은 alpha 없음)
 실험 2: Coeff sweep — 계수 범위에 따른 난이도 변화
-실험 3: 5-way 비교 — Posiform vs Quiet vs Wishart vs ZeroExp vs HardMode
+실험 3: 4-way 비교 — Posiform vs Quiet vs Wishart vs ZeroExp
 """
 
 import random
@@ -21,7 +21,6 @@ from quiet_planting.qubo_quiet_planted import (
     extract_original_solution,
 )
 from wishart.qubo_wishart import create_qubo_wishart
-from hard_mode.qubo_hard_mode import create_qubo_hard
 from qubo_utils import calculate_energy
 from zero_expectation.qubo_zero_expectation import create_qubo_precise
 
@@ -233,21 +232,20 @@ def run_coeff_sweep(n_bits=50, coeff_ranges=None, num_runs=10,
 
 
 def run_comparison_experiment(n_bits=50, num_runs=10, quiet_alpha=4.2,
-                               wishart_alpha=0.7, noise_ratio=0.1,
+                               wishart_alpha=0.7,
                                coeff_range=(1.0, 3.0),
                                num_reads=200, num_sweeps=1000):
     """
-    5-way 비교: Posiform vs Quiet vs Wishart vs ZeroExp vs HardMode.
+    4-way 비교: Posiform vs Quiet vs Wishart vs ZeroExp.
     """
-    print("=" * 120)
-    print(f"5-Way 비교 실험")
+    print("=" * 100)
+    print(f"4-Way 비교 실험")
     print(f"N={n_bits}, num_runs={num_runs}")
     print(f"  Posiform: coeff_range={coeff_range}")
     print(f"  Quiet: alpha={quiet_alpha}")
     print(f"  Wishart: alpha={wishart_alpha}")
-    print(f"  HardMode: noise={noise_ratio}")
     print(f"  ZeroExp: density=1.0")
-    print("=" * 120)
+    print("=" * 100)
 
     sampler = neal.SimulatedAnnealingSampler()
 
@@ -255,7 +253,7 @@ def run_comparison_experiment(n_bits=50, num_runs=10, quiet_alpha=4.2,
     quiet_total = n_bits + quiet_m
     quiet_sweeps = max(1000, 10 * quiet_total)
 
-    methods = ['Posiform', 'Quiet', 'Wishart', 'ZeroExp', 'HardMode']
+    methods = ['Posiform', 'Quiet', 'Wishart', 'ZeroExp']
     counts = {m: {"EXACT": 0, "ENERGY_MATCH": 0, "FAIL": 0} for m in methods}
     hammings = {m: [] for m in methods}
 
@@ -263,7 +261,7 @@ def run_comparison_experiment(n_bits=50, num_runs=10, quiet_alpha=4.2,
     for m in methods:
         header += f" | {m:<12} | {m[:1]+'_Ham':<6}"
     print(f"\n{header}")
-    print("-" * 120)
+    print("-" * 100)
 
     for run in range(num_runs):
         target = ''.join(str(random.randint(0, 1)) for _ in range(n_bits))
@@ -304,21 +302,12 @@ def run_comparison_experiment(n_bits=50, num_runs=10, quiet_alpha=4.2,
         result_z = classify_result(target, found_z, te_z, ss_z.first.energy)
         hdist_z = hamming_distance(target, found_z)
 
-        # --- Hard Mode ---
-        Q_h = create_qubo_hard(target, noise_ratio=noise_ratio)
-        te_h = calculate_energy(target, Q_h)
-        ss_h = sampler.sample_qubo(Q_h, num_reads=num_reads, num_sweeps=num_sweeps)
-        found_h = ''.join(str(ss_h.first.sample[k]) for k in range(n_bits))
-        result_h = classify_result(target, found_h, te_h, ss_h.first.energy)
-        hdist_h = hamming_distance(target, found_h)
-
         # 집계
         for name, result, hdist in [
             ('Posiform', result_p, hdist_p),
             ('Quiet', result_q, hdist_q),
             ('Wishart', result_w, hdist_w),
             ('ZeroExp', result_z, hdist_z),
-            ('HardMode', result_h, hdist_h),
         ]:
             r_key = "EXACT" if result in ("EXACT", "SYM_MATCH") else result
             counts[name][r_key] += 1

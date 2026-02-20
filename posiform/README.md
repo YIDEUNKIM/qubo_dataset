@@ -227,6 +227,6 @@ python3 posiform/test_posiform.py --scaling 10
 # 계수 범위 sweep 실험
 python3 posiform/test_posiform.py --coeff 10
 
-# 5-way 비교 (Posiform vs Quiet vs Wishart vs ZeroExp vs HardMode)
+# 4-way 비교 (Posiform vs Quiet vs Wishart vs ZeroExp)
 python3 posiform/test_posiform.py --compare
 ```
