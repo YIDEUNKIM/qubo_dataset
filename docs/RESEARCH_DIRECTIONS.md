@@ -2,24 +2,48 @@
 
 ## 1. 현재 상태 진단
 
-### 보유 자산 (7개 방법론)
+### 보유 자산 (6개 방법론)
 
-| 생성기 | GS 보장 | SA-hard | 보조변수 | 구별 불가능 | 난이도 조절 | 상태 |
-|--------|:-------:|:-------:|:--------:|:----------:|:----------:|:----:|
-| Wishart | 수학적 | **O** (alpha<0.95) | 없음 | X (low-rank) | alpha | 완성 |
-| McEliece | 조건부 (M 의존) | 미측정 | 있음 (대량) | 미분석 | m, t | 완성 |
-| Quiet Planting | 조건부 (field 필요) | 중간 | 있음 | **O** (alpha<3.86) | alpha, field | 완성 |
-| Posiform | **수학적 (유일)** | X (SA-trivial) | 없음 | 미분석 | X | 완성 |
+| 생성기              | GS 보장 | SA-hard | 보조변수 | 구별 불가능 | 난이도 조절 | 상태 |
+|------------------|:-------:|:-------:|:--------:|:----------:|:----------:|:----:|
+| Wishart          | 수학적 (유한정밀도 제외) | **O** (alpha<0.95) | 없음 | X (low-rank) | alpha | 완성 |
+| McEliece         | 조건부 (M 의존) | 미측정 | 있음 (대량) | 미분석 | m, t | 완성 |
+| Quiet Planting   | 조건부 (field 필요) | 중간 | 있음 | **O** (alpha<3.86) | alpha, field | 완성 |
+| Posiform         | **수학적 (유일)** | X (SA-trivial) | 없음 | 미분석 | X | 완성 |
 | Posiform Hardened | **수학적 (유일)** | 조절 가능 | 없음 | X (block-diagonal) | alpha, coeff_type | 완성 |
 | Zero Expectation | 수학적 | X (SA-trivial) | 없음 | **O** (E[q]=0) | density | 완성 |
-| Hard Mode | 조건부 | X (SA-trivial) | 없음 | X (backbone) | noise_ratio | 완성 |
+
+### SA 난이도 분류 기준
+
+**표준 실험 조건**: num_sweeps = 10N, num_reads = 200, 랜덤 target으로 10회 이상 반복.
+
+| 분류 | 조작적 정의 | TTS 스케일링 |
+|------|------------|-------------|
+| **SA-hard** | p(N=500) < 10% | TTS(99%) ~ exp(cN), c > 0 |
+| **SA-moderate** | 10% ≤ p(N=500) < 90% | 지수적이나 느린 감소 |
+| **SA-easy** | p(N=1000) ≥ 90% | TTS(99%) ~ poly(N) |
+
+여기서 p(N)은 N-bit QUBO에서 SA가 ground state를 찾을 확률. TTS(99%)는 99% 확률로 GS를 찾는 데 필요한 총 SA 시간으로, TTS = τ × num_sweeps × ⌈log(1-0.99) / log(1-p_s)⌉.
+
+### QUBO 벤치마크 적용성
+
+생성된 QUBO를 벤치마크로 신뢰할 수 있는가 — 주장하는 ground state가 실제로 맞는가:
+
+| 방법론 | GS 신뢰도 | 근거 | 벤치마크 적합성 |
+|--------|:---------:|------|:--------------:|
+| Posiform | **확정** | Tarjan SCC 유일성 증명 | **O** |
+| Hardened Posiform | **확정** | subgraph brute force + posiform 보장 | **O** |
+| Zero Expectation | **확정** | LP 최적화 구조적 보장 | **O** |
+| Wishart | 주의 필요 | 이론: W^Tt=0. 실제: 부동소수점으로 W^Tt≈0, 큰 N에서 GS 이탈 가능 | **조건부** |
+| Quiet Planting | 조건부 | field=0이면 모든 SAT 해가 동일 에너지 (축퇴). field>0 필요 | **조건부** |
+| McEliece | 조건부 | 페널티 M 충분해야 GS 보장. M 부족 시 보조변수 해 오염 | **조건부** |
 
 ### 난이도 스펙트럼
 
 ```
 SA-trivial ◄─────────────────────────────────────────────► SA-hard
-Posiform   ZeroExp   HardMode   Hardened(α=0.1)   Quiet(f=0.5)   Wishart(α=0.7)
-(100%)     (100%)    (100%)     (조절가능)          (N↑→0%)        (N≥100→0%)
+Posiform   ZeroExp   Hardened(α=0.1)   Quiet(f=0.5)   Wishart(α=0.7)
+(100%)     (100%)    (조절가능)          (N↑→0%)        (N≥100→0%)
                                                                     │
                                      McEliece ────── 미측정 (이론: O(2^k) PT)
 ```
@@ -38,7 +62,7 @@ SA-hard, 구별 불가능, 수학적 GS 보장 — 이 세 가지를 동시에 �
 
 | 방법론 | SA-hard | 구별 불가능 | GS 보장 |
 |--------|:-------:|:----------:|:-------:|
-| Wishart | **O** | X | **O** |
+| Wishart | **O** | X | 조건부 (유한정밀도 제외) |
 | Quiet Planting | 중간 | **O** | 조건부 |
 | Posiform Hardened | 조절 가능 | X | **O** |
 | Zero Expectation | X | **O** | **O** |
@@ -107,11 +131,11 @@ SA-hard, 구별 불가능, 수학적 GS 보장 — 이 세 가지를 동시에 �
 
 ## 3. 연구 방향
 
-### 방향 A: 7-방법론 통합 벤치마크 스위트 논문 (가장 현실적)
+### 방향 A: 6-방법론 통합 벤치마크 스위트 논문 (가장 현실적)
 
 > **"QUBO Benchmark Suite with Verified Ground States: A Comprehensive Toolkit for Quantum Annealing Evaluation"**
 
-7개 방법론을 난이도/보장/은닉성 축으로 체계화한 통합 벤치마크 스위트.
+6개 방법론을 난이도/보장/은닉성 축으로 체계화한 통합 벤치마크 스위트.
 
 **핵심 기여**:
 1. 난이도 스펙트럼 전체를 커버하는 최초의 통합 벤치마크
@@ -124,7 +148,7 @@ SA-hard, 구별 불가능, 수학적 GS 보장 — 이 세 가지를 동시에 �
 |:--------:|------|------|:----------:|
 | **필수** | Hardened SA 실험 | sweep 전이 + N 스케일링 + vs Plain | Posiform Hardened |
 | **필수** | McEliece SA 실험 | m별 SA 성공률 스케일링 | McEliece |
-| **필수** | 통합 비교 실험 | 7개 방법론 동일 N/sweeps에서 비교 | 전체 |
+| **필수** | 통합 비교 실험 | 6개 방법론 동일 N/sweeps에서 비교 | 전체 |
 | 높음 | D-Wave QPU 실험 | 최소 Wishart + Hardened + Posiform | Wishart, Hardened |
 | 높음 | 데이터셋 공개 | 재현성 + 커뮤니티 기여 | 전체 |
 | 중간 | QAOA 실험 | 회로 깊이별 성능 (Qiskit) | 전체 |
@@ -133,9 +157,9 @@ SA-hard, 구별 불가능, 수학적 GS 보장 — 이 세 가지를 동시에 �
 ```
 1. Introduction — QUBO 벤치마크의 필요성
 2. Background — QUBO, Ising, SA, QA
-3. Methods — 7개 방법론 각각의 원리와 GS 보장
+3. Methods — 6개 방법론 각각의 원리와 GS 보장
 4. Experiments
-   4.1 SA 난이도 비교 (7-way, 동일 조건)
+   4.1 SA 난이도 비교 (6-way, 동일 조건)
    4.2 N 스케일링 (easy→hard 순서로 실패 시점)
    4.3 QPU 실험 (Wishart, Hardened 중심)
 5. Discussion — 사용 시나리오, 트레이드오프
@@ -302,17 +326,17 @@ McEliece의 핵심 미구현 기능 (Eq.14 exact decomposition)을 완성하여 
 
 1. **Posiform Hardened SA 실험 실행**
    ```bash
-   python3 posiform_hardened/run_experiments.py sweep     # Sweep 전이
-   python3 posiform_hardened/run_experiments.py scaling   # N 스케일링 + vs Plain
+   python3 hardened_posiform/test_posiform_hardened.py --sweep 10    # Sweep 전이
+   python3 hardened_posiform/test_posiform_hardened.py --scaling 10  # N 스케일링 + vs Plain
    ```
 
 2. **McEliece SA 스케일링 실험**
    - m=3,4에서 SA 성공률 측정 (현재 GS 검증만 완료)
    - N 스케일링: k=4~20 범위
 
-3. **7-way 통합 비교 실험**
+3. **6-way 통합 비교 실험**
    - 동일 조건 (N=100,500,1000 / sweeps=1000 / reads=100)
-   - 7개 방법론 전부 SA로 비교
+   - 6개 방법론 전부 SA로 비교
 
 ### Phase 2: 논문 작성 + QPU 실험 (1~2개월)
 

@@ -55,13 +55,15 @@ qubo_dataset/
 
 ## 생성 방식 비교
 
-| 생성기 | QUBO 크기 | Ground State | SA 난이도 | 구별 불가능 | 핵심 논문 |
-|--------|:---------:|:-----------:|:---------:|:----------:|----------|
-| **Wishart** | n | 수학적 보장 (유한정밀도 제외) | **SA-hard** (alpha~0.7) | X (low-rank) | Hamze et al. 2020 |
-| **Hardened Posiform** | n | **수학적 보장 (유일)** | easy~moderate (α 의존) | 미분석 | Pelofske et al. 2024 |
-| **Quiet Planting** | n(1+alpha) | 축퇴 (field 필요) | field 의존적 | O (alpha<3.86) | Krzakala & Zdeborova 2009 |
-| **Posiform** | n | **수학적 보장 (유일)** | SA-easy | 미분석 | Hahn et al. 2023 |
-| **Zero Expectation** | n(n-1)/2 | LP 최적화 | SA-easy | O (E[q_ij]=0) | 내부 연구 |
+| 생성기 | QUBO 크기 | Ground State | SA 난이도 | 구별 불가능 | 벤치마크 적합 | 핵심 논문 |
+|--------|:---------:|:-----------:|:---------:|:----------:|:----------:|----------|
+| **Wishart** | n | 수학적 (유한정밀도 제외) | **SA-hard** | X (low-rank) | 조건부 | Hamze et al. 2020 |
+| **Hardened Posiform** | n | **수학적 (유일)** | SA-moderate | 미분석 | **O** | Pelofske et al. 2024 |
+| **Quiet Planting** | n(1+alpha) | 조건부 (field 필요) | field 의존적 | **O** (alpha<3.86) | 조건부 | Krzakala & Zdeborova 2009 |
+| **Posiform** | n | **수학적 (유일)** | SA-easy | 미분석 | **O** | Hahn et al. 2023 |
+| **Zero Expectation** | n(n-1)/2 | 수학적 | SA-easy | **O** (E[q_ij]=0) | **O** | 내부 연구 |
+
+> **벤치마크 적합**: 주장하는 ground state가 실제로 맞는지의 신뢰도. "조건부"는 파라미터에 따라 GS가 깨질 수 있음을 의미.
 
 ## Quick Start
 
@@ -111,9 +113,10 @@ python3 posiform/test_posiform.py --compare
 | 500 | **100%** | **~13%** (500 sweeps) | 20% | ~0% | ~100% |
 | 1000 | **100%** | - | 0% | ~0% | ~100% |
 
-- **SA-hard**: Wishart (alpha=0.7), Quiet Planting (N>300)
-- **SA-moderate**: Hardened Posiform (lin2, α=0.01)
-- **SA-easy**: Posiform, Zero Expectation
+**SA 난이도 분류 기준** (표준 조건: num_sweeps=10N, num_reads=200):
+- **SA-hard**: p(N=500) < 10% — Wishart (alpha=0.7), Quiet Planting (N>300)
+- **SA-moderate**: 10% ≤ p(N=500) < 90% — Hardened Posiform (lin2, α=0.01)
+- **SA-easy**: p(N=1000) ≥ 90% — Posiform, Zero Expectation
 
 자세한 분석: [`docs/POSIFORM_EXPERIMENT.md`](docs/POSIFORM_EXPERIMENT.md), [`docs/QUIET_PLANTING_EXPERIMENT.md`](docs/QUIET_PLANTING_EXPERIMENT.md)
 
