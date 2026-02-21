@@ -46,9 +46,15 @@ qubo_dataset/
 │   ├── test_posiform.py                   ← SA 실험 (scaling, coeff sweep, 5-way comparison)
 │   └── results/                           ← 생성된 QUBO 파일
 │
-└── hardened_posiform/                      ← Hardened Posiform (Random QUBO + Posiform)
-    ├── qubo_posiform_hardened.py          ← 생성기 (Pelofske, Hahn, Djidjev 2024)
-    ├── test_posiform_hardened.py          ← SA 실험 (sweep 전이, N-scaling, 비교)
+├── hardened_posiform/                      ← Hardened Posiform (Random QUBO + Posiform)
+│   ├── qubo_posiform_hardened.py          ← 생성기 (Pelofske, Hahn, Djidjev 2024)
+│   ├── test_posiform_hardened.py          ← SA 실험 (sweep 전이, N-scaling, 비교)
+│   ├── papers/                            ← 참고 논문 PDF
+│   └── results/                           ← 생성된 QUBO 파일
+│
+└── mceliece/                               ← McEliece Cryptographic QUBO
+    ├── qubo_mceliece.py                   ← 생성기 (Mandrà et al. 2024)
+    ├── test_mceliece.py                   ← SA 실험 (m-scaling, t-sweep, sweep 전이, 6-way 비교)
     ├── papers/                            ← 참고 논문 PDF
     └── results/                           ← 생성된 QUBO 파일
 ```
@@ -84,6 +90,12 @@ qubo_dataset/
   - `coeff_type`: 'lin2' ({-1,+1}) vs 'lin20' ({-1,-0.9,...,0.9,1}) — lin2가 더 어려움
   - `max_subgraph_size`: brute force 가능 크기 (≤23, default 15)
   - SA sweep 전이 (N=500): lin2,α=0.01은 5000 sweeps에서도 29.8% 성공률
+- **`mceliece/qubo_mceliece.py`** - **McEliece Cryptographic QUBO generator.** Mandrà et al. (arXiv:2308.09704) 기반: McEliece 공개키를 Ising 스핀 시스템으로 캐스팅 → p-body 상호작용 → Rosenberg 차수축소 → QUBO. 암호학적 보안에 기반한 hardness. Key parameters:
+  - `m`: GF(2^m) 확장 차수 (N=2^m). m≥5는 차수축소 비용으로 생성이 매우 느림
+  - `t`: 에러 정정 능력 (k ≈ N - m*t, d ≥ 2t+1)
+  - QUBO 크기: total_vars = k + num_aux (보조변수). m=4,t=2일 때 k=8, aux≈25~40
+  - `create_qubo_mceliece(target, m, t, seed)`: 메인 진입점. Returns (Q, info)
+  - `extract_original_solution(sample, k)`: SA 결과에서 원래 k개 변수 추출
 
 ### Analysis & Verification
 - **`zero_expectation/test_zero_expectation.py`** - SA scaling experiment for Zero-Expectation QUBO.
@@ -93,6 +105,7 @@ qubo_dataset/
 - **`quiet_planting/test_quiet_planted.py`** - SA experiment framework for Quiet Planting: alpha sweep (2.0–5.0), N scaling, 3-way comparison (Quiet vs Wishart vs ZeroExp).
 - **`posiform/test_posiform.py`** - SA experiment framework for Posiform Planting: N scaling, coefficient range sweep, 4-way comparison (Posiform vs Quiet vs Wishart vs ZeroExp).
 - **`hardened_posiform/test_posiform_hardened.py`** - SA experiment framework for Hardened Posiform: sweep transition (S-curve), N-scaling, hardened vs plain comparison.
+- **`mceliece/test_mceliece.py`** - SA experiment framework for McEliece Cryptographic QUBO: m-scaling (GF(2^m) 차수 vs 난이도), t-sweep (에러 정정 능력 vs 난이도), sweep transition (S-curve), 6-way comparison. 주의: m≥5는 Rosenberg 차수축소 비용으로 QUBO 생성이 매우 느림 → m=3,4로 제한.
 
 ### Data
 - **`<method>/results/`** - 각 방법론별 생성된 QUBO 파일. CSV edge-list 형식 (`# target,<bitstring>\ni,j,weight\n...`). 각 생성기가 자신의 `results/` 디렉토리에 자동 저장.
@@ -160,6 +173,22 @@ python3 hardened_posiform/test_posiform_hardened.py --scaling 10
 
 # Run Hardened vs Plain Posiform comparison
 python3 hardened_posiform/test_posiform_hardened.py --compare 10
+
+# Generate McEliece Cryptographic QUBO (args: target [m] [t] [seed])
+python3 mceliece/qubo_mceliece.py 10110
+python3 mceliece/qubo_mceliece.py 10110 4 2 42
+
+# Run McEliece m-scaling experiment (args: --m-scaling [num_runs])
+python3 mceliece/test_mceliece.py --m-scaling 10
+
+# Run McEliece t-parameter sweep (args: --t-sweep [num_runs])
+python3 mceliece/test_mceliece.py --t-sweep 10
+
+# Run McEliece SA sweep transition (args: --sweep [num_instances])
+python3 mceliece/test_mceliece.py --sweep 10
+
+# Run 6-way comparison (McEliece vs Hardened vs Posiform vs Quiet vs Wishart vs ZeroExp)
+python3 mceliece/test_mceliece.py --compare 10
 
 # Run Zero-Expectation SA scaling experiment
 python3 zero_expectation/test_zero_expectation.py 10,20,50,100 10

@@ -144,17 +144,11 @@ Quiet Planting은 동일 N에서 5.2배 큰 탐색 공간을 가짐. 반면 Posi
 
 2-SAT 자체가 P(다항 시간)에 풀리는 문제이므로, 이로부터 유도된 QUBO도 구조적으로 어려울 수 없다. SA의 single-bit-flip dynamics가 2-SAT의 함축 전파(unit propagation)와 유사하게 작동하여 효율적으로 ground state에 도달.
 
-### 5.2 다른 방법론과의 정량적 비교
+### 5.2 다른 방법론과의 비교
 
-| 방법론 | N=100 성공률 | N=500 성공률 | N=1000 성공률 |
-|--------|:----------:|:----------:|:-----------:|
-| **Posiform** (num_reads=1) | **100%** | **100%** | **100%** |
-| Quiet Planting (field=0.5) | 100% | 20% | 0% |
-| Wishart (alpha=0.7) | ~10% | ~0% | ~0% |
-| Zero-Expectation | ~100% | ~100% | ~100% |
-| Hard Mode | ~100% | ~100% | ~100% |
+> 전체 방법론의 정량적 비교 결과는 **[METHODOLOGY_COMPARISON.md](METHODOLOGY_COMPARISON.md)**를 참조.
 
-Posiform은 Zero-Expectation, Hard Mode와 함께 "SA-easy" 카테고리에 속한다. 다만 **유일한 ground state를 수학적으로 보장**한다는 점에서 검증 용도로 차별화됨.
+Posiform은 Zero-Expectation과 함께 "SA-easy" 카테고리에 속한다. 다만 **유일한 ground state를 수학적으로 보장**한다는 점에서 검증 용도로 차별화됨.
 
 ### 5.3 벤치마크로서의 가치
 
@@ -171,13 +165,7 @@ Posiform은 Zero-Expectation, Hard Mode와 함께 "SA-easy" 카테고리에 속�
 
 ### 5.4 권장 사용 시나리오
 
-| 시나리오 | Posiform | Wishart | Quiet Planting |
-|---------|:--------:|:-------:|:--------------:|
-| 솔버 정확성 검증 | **최적** | - | - |
-| SA 한계 측정 | - | **최적** | 적합 |
-| 양자 우위 벤치마크 | - | **최적** | 적합 |
-| 통계적 은닉성 연구 | - | - | **최적** |
-| 대규모 문제 (N>1000) | **적합** (QUBO=n) | 적합 (QUBO=n) | 비용 높음 (QUBO=5.2n) |
+> 전체 방법론별 권장 가이드는 **[METHODOLOGY_COMPARISON.md](METHODOLOGY_COMPARISON.md)** Section 8 참조.
 
 ---
 

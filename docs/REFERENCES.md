@@ -8,12 +8,62 @@
 - **저자**: Firas Hamze, Jack Raymond, Christopher A. Pattison, Katja Biswas, Helmut G. Katzgraber
 - **출판**: Physical Review E, 2020
 - **arXiv**: [arXiv:2009.11217](https://arxiv.org/abs/2009.11217)
-- **사용처**: `qubo_wishart.py`, `test_wishart.py`
+- **사용처**: `wishart/qubo_wishart.py`, `wishart/test_wishart.py`
 - **핵심 내용**:
   - 목표 비트스트링 t가 ground state임이 수학적으로 보장되는 Ising 모델 구성법
   - alpha = M/N 단일 파라미터로 난이도 제어
   - alpha_c 근처에서 1차 상전이 발생, SA가 metastable 상태에 갇힘
   - 직교 Gaussian 투영 (W^T t = 0)으로 ground state 보장
+
+### Posiform Planting (2-SAT → QUBO)
+
+- **논문**: "Using 2-SAT to Generate QUBO Instances with Known Optimal Solutions"
+- **저자**: Georg Hahn, Elijah Pelofske, Hristo N. Djidjev
+- **출판**: IEEE International Conference on Quantum Computing and Engineering (QCE), 2023
+- **사용처**: `posiform/qubo_posiform.py`, `posiform/test_posiform.py`
+- **핵심 내용**:
+  - Planted 2-SAT → posiform → QUBO 파이프라인
+  - 보조변수 없이 QUBO 크기 = N 유지
+  - Tarjan SCC 기반 2-SAT 유일성 검사로 GS 유일성 수학적 보장
+  - SA에 대해 trivially easy (2-SAT이 P에 속하므로 smooth landscape)
+
+### Hardened Posiform Planting
+
+- **논문**: "Increasing the Hardness of Posiform Planting Using Random QUBOs for Programmable Quantum Annealer Benchmarking"
+- **저자**: Elijah Pelofske, Georg Hahn, Hristo N. Djidjev
+- **출판**: npj Unconventional Computing, 2025
+- **사용처**: `hardened_posiform/qubo_posiform_hardened.py`, `hardened_posiform/test_posiform_hardened.py`
+- **핵심 내용**:
+  - Random discrete-coefficient QUBO + posiform QUBO 결합 (Q = ΣR_i + α×P)
+  - 기본 posiform의 SA-trivial 한계를 극복
+  - GS 유일성 수학적 보장 유지
+  - alpha_scale(α)과 coeff_type으로 난이도 연속 조절
+
+### McEliece Cryptographic QUBO
+
+- **논문**: "Ising formulation of the McEliece problem"
+- **저자**: Salvatore Mandrà, Gianluca Passarelli, Gian Giacomo Guerreschi
+- **출판**: Future Generation Computer Systems (FGCS), 2025
+- **arXiv**: [arXiv:2308.09704](https://arxiv.org/abs/2308.09704)
+- **사용처**: `mceliece/qubo_mceliece.py`, `mceliece/test_mceliece.py`
+- **핵심 내용**:
+  - McEliece 암호 프로토콜의 공개키를 Ising 스핀 시스템으로 캐스팅
+  - GF(2^m) 위의 Goppa 코드 → McEliece 키 생성 → p-local Ising 상호작용
+  - Rosenberg 보조변수로 p-body → 2-body 차수 축소 → QUBO
+  - 암호학적 보안에 기반한 computational hardness
+  - 파라미터 (m, t)로 난이도 조절: m=GF(2^m) 확장 차수, t=에러 정정 능력
+  - **제한**: m≥5에서 Rosenberg 차수축소의 지수적 비용으로 QUBO 생성 불가. Eq.14 exact decomposition으로 해결 가능 (미구현)
+
+### Quiet Planting (Planted 3-SAT)
+
+- **논문**: "Hiding Quiet Solutions in Random Constraint Satisfaction Problems"
+- **저자**: Florent Krzakala, Lenka Zdeborova
+- **출판**: Physical Review Letters, 102(23), 238701, 2009
+- **사용처**: `quiet_planting/qubo_quiet_planted.py`, `quiet_planting/test_quiet_planted.py`
+- **핵심 내용**:
+  - Planted random 3-SAT에서 alpha < 3.86이면 랜덤과 통계적 구별 불가
+  - Rosenberg reduction으로 3-SAT → QUBO (보조변수 m개)
+  - 축퇴 해소를 위한 planted field 필요
 
 ---
 
@@ -90,9 +140,12 @@
 
 | 개념 | 관련 파일 | 참고 논문/이론 |
 |------|----------|--------------|
-| Wishart Planted Ensemble | `qubo_wishart.py`, `test_wishart.py` | Hamze et al. (2020) |
-| Zero-Expectation QUBO | `qubo_zero_expectation.py`, `check_zero_expectation.py` | `기댓값0만들기_2트.pdf` |
-| Backbone + Frustration | `qubo_hard_mode.py`, `test_hard_mode.py` | Spin glass 이론 |
-| Ising-QUBO 변환 | `qubo_wishart.py`, `qubo_to_qaoa.py` | Ising model 표준 변환 |
-| QAOA | `qubo_to_qaoa.py`, `run_qaoa_n5.py` | Farhi et al. (2014) |
-| SA 벤치마크 | `compare_experiment.py`, `test_wishart.py` | Kirkpatrick et al. (1983) |
+| Wishart Planted Ensemble | `wishart/qubo_wishart.py` | Hamze et al. (2020) |
+| Zero-Expectation QUBO | `zero_expectation/qubo_zero_expectation.py` | `기댓값0만들기_2트.pdf` |
+| Quiet Planting | `quiet_planting/qubo_quiet_planted.py` | Krzakala & Zdeborova (2009) |
+| Posiform Planting | `posiform/qubo_posiform.py` | Hahn, Pelofske, Djidjev (2023) |
+| Hardened Posiform | `hardened_posiform/qubo_posiform_hardened.py` | Pelofske, Hahn, Djidjev (2025) |
+| McEliece QUBO | `mceliece/qubo_mceliece.py`, `mceliece/test_mceliece.py` | Mandrà et al. (2025) |
+| Ising-QUBO 변환 | `wishart/qubo_wishart.py` | Ising model 표준 변환 |
+| SA 벤치마크 | 각 방법론별 `test_*.py` | Kirkpatrick et al. (1983) |
+| **전체 비교** | **`docs/METHODOLOGY_COMPARISON.md`** | **6-way SA 벤치마크 결과** |
