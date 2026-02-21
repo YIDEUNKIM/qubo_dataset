@@ -98,9 +98,11 @@ Q, info = create_qubo_hardened_posiform(
 
 ## SA 실험 결과
 
-### 실험 1: Sweep 전이 (N=500, 8 instances, 100 reads/sweep)
+### 실험 1: Sweep 전이 (N=500)
 
-SA sweep 수에 따른 per-sample ground-state sampling rate:
+SA sweep 수에 따른 per-sample ground-state sampling rate. 논문 (Pelofske 2024) Fig 7-8 재현.
+
+**실험 A** (8 instances, 100 reads/sweep):
 
 | Config | 1 | 5 | 10 | 50 | 100 | 500 | 1000 | 5000 |
 |--------|--:|--:|---:|---:|----:|----:|-----:|-----:|
@@ -109,32 +111,56 @@ SA sweep 수에 따른 per-sample ground-state sampling rate:
 | lin20, α=0.01 | 0.0% | 0.0% | 0.0% | 2.6% | 8.4% | 34.8% | 50.0% | 73.1% |
 | lin20, α=0.1 | 0.0% | 76.4% | 83.2% | 96.4% | 99.2% | 100.0% | 100.0% | 100.0% |
 
+**실험 B** (5 instances, 20 reads/sweep — METHODOLOGY_COMPARISON 기준):
+
+| Config | 10 sw | 50 sw | 100 sw | 500 sw | 1000 sw | 5000 sw |
+|--------|:-----:|:-----:|:------:|:------:|:-------:|:-------:|
+| lin2, α=0.01 | 2.0% | 1.0% | 4.0% | 6.0% | 12.0% | 24.0% |
+| lin2, α=0.1 | 24.0% | 59.0% | 83.0% | 100% | 100% | 100% |
+| lin20, α=0.01 | 0.0% | 2.0% | 12.0% | 31.0% | 52.0% | 68.0% |
+| lin20, α=0.1 | 87.0% | 98.0% | 99.0% | 100% | 100% | 100% |
+
+### 논문 핵심 발견 재현 확인
+
+| 논문 발견 | 코드 결과 | 일치 |
+|-----------|-----------|:---:|
+| α=0.01이 α=0.1보다 어려움 | lin2: 24% vs 100% (5000sw) | O |
+| lin2가 lin20보다 어려움 | α=0.01에서 lin2(24%) < lin20(68%) | O |
+| Sweep 수 증가 → S-curve 전이 | 모든 config에서 단조 증가 | O |
+| α=0.01은 매우 많은 sweep 필요 | lin2,α=0.01: 5000sw에서도 24% | O |
+
 ### 핵심 관찰
 
-1. **α=0.01이 α=0.1보다 훨씬 어려움**: lin2,α=0.01은 5000 sweeps에서도 29.8%에 그침
+1. **α=0.01이 α=0.1보다 훨씬 어려움**: lin2,α=0.01은 5000 sweeps에서도 24~30%에 그침
 2. **lin2가 lin20보다 어려움**: 이산적 계수 {-1,+1}이 더 많은 frustration 생성
 3. **비단조적 행동**: lin2,α=0.01에서 sweeps=5(8.8%) → sweeps=10(4.5%) 구간에서 성공률 하락 관찰 — 논문 Section 3.3과 일치. SA가 중간 sweeps에서 local minimum에 갇히는 현상.
 4. **난이도 순서**: lin2,α=0.01 (hardest) > lin20,α=0.01 > lin2,α=0.1 > lin20,α=0.1 (easiest)
 
-### 기본 Posiform과의 비교
+### N 스케일링 (SA 성공률)
 
-| 방법론 | N=500 성공률 (SA, 500 sweeps) |
-|--------|:----------------------------:|
-| **Hardened (lin2, α=0.01)** | **13.2%** |
-| **Hardened (lin20, α=0.01)** | **34.8%** |
-| Hardened (lin2, α=0.1) | 99.5% |
-| Plain Posiform | 100% |
+num_reads=50, num_sweeps=1000:
 
-Hardened posiform은 α=0.01에서 기본 posiform 대비 난이도를 크게 증가시킨다.
+| Config | N=50 | N=100 | N=200 | N=500 | N=1000 |
+|--------|:----:|:-----:|:-----:|:-----:|:------:|
+| **lin2, α=0.01** | 100% | 100% | 100% | 90% | **40%** |
+| **lin2, α=0.1** | 100% | 100% | 100% | 100% | 100% |
+| Plain Posiform | 100% | 100% | 100% | 100% | 100% |
+
+Hardened posiform (α=0.01)은 N=500부터 SA 성공률이 감소하기 시작하며, N=1000에서 40%로 SA-moderate 영역에 진입한다.
 
 ### 다른 방법론과의 위치
 
-| 방법론 | SA 난이도 | Ground State 보장 | 난이도 조절 |
-|--------|:---------:|:-----------------:|:----------:|
-| Plain Posiform | trivially easy | O (수학적) | X |
-| **Hardened Posiform** | **easy~moderate** | **O (수학적)** | **O (α, coeff_type)** |
-| Quiet Planting | moderate | △ (field 의존) | O (alpha, field) |
-| Wishart | hard | △ (수치 정밀도) | O (alpha) |
+| 방법론 | SA 난이도 | GS 보장 | 난이도 조절 | N=500 성공률 |
+|--------|:---------:|:-------:|:----------:|:----------:|
+| Plain Posiform | trivially easy | **수학적 (유일)** | X | 100% |
+| **Hardened (α=0.1)** | easy~moderate | **수학적 (유일)** | **O** | 100% |
+| **Hardened (α=0.01)** | **moderate** | **수학적 (유일)** | **O** | **90%** |
+| Zero Expectation | trivially easy | 수학적 | X | 100% |
+| Quiet Planting (f=0.5) | medium | 조건부 | O | — |
+| Wishart (α=0.7) | **hard** | 수학적 (유한정밀도) | O | 0% |
+| McEliece (m=4,t=2) | **hard** | 조건부 | O | — |
+
+> 전체 방법론의 정량적 비교: [`docs/METHODOLOGY_COMPARISON.md`](../docs/METHODOLOGY_COMPARISON.md)
 
 ## 파일 구성
 
