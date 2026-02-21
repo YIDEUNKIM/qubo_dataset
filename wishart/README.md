@@ -115,16 +115,17 @@ Input: target (비트스트링), alpha (난이도), seed (재현성)
 | 1.0 | ~10% | 0.9876 | ~20 |
 | 1.5 | ~70% | 0.9993 | ~3 |
 
-### N 스케일링 (alpha=0.7)
+### N 스케일링 (alpha=0.7, num_reads=50, num_sweeps=1000)
 
-```
-N=50:  ~70% 성공
-N=100: ~10% 성공
-N=150: ~0%  성공
-N=200: ~0%  성공 (에너지 비 ~0.93)
-```
+| N | 성공률 | 평균 Hamming | 비고 |
+|---:|:------:|:----------:|------|
+| 50 | **70%** | 5.4 | easy-hard 전이 시작 |
+| 100 | **0%** | 43.1 | Hamming ≈ N/2 (metastable trap) |
+| 200 | 0% | 86.2 | 완전 실패 |
+| 500 | 0% | 231.9 | 완전 실패 |
+| 1000 | 0% | 467.2 | 완전 실패 |
 
-성공률이 N에 따라 **지수적으로 감소**하며, 이는 1차 상전이의 특성.
+성공률이 N에 따라 **급격히 감소**하며, Hamming distance ≈ N/2는 SA가 metastable 상태에 갇혀 target과 완전히 다른 위치에 도달함을 의미한다.
 
 ## 구별 가능성 분석
 
@@ -138,12 +139,25 @@ Wishart QUBO는 Q 행렬 분석으로 **구별 가능**:
 
 > 구별 가능하지만, 구별할 수 있다는 것과 풀 수 있다는 것은 별개 문제.
 
+### 다른 방법론과의 비교 (N=100, num_reads=50, num_sweeps=1000)
+
+| 방법론 | N=50 | N=100 | N=200 | N=500 |
+|--------|:----:|:-----:|:-----:|:-----:|
+| **Wishart (α=0.7)** | **70%** | **0%** | 0% | 0% |
+| McEliece (m=4,t=2) | — | — | — | — |
+| Quiet Planting (f=0.5) | 100% | 60% | 0% | — |
+| Hard Posiform (α=0.01) | 100% | 100% | 100% | 90% |
+| Posiform | 100% | 100% | 100% | 100% |
+| Zero Expectation | 100% | 100% | 100% | 100% |
+
+Wishart는 N=100부터 SA 성공률 0%로 **가장 빠르게 SA-hard에 진입**한다. 전체 비교: [`docs/METHODOLOGY_COMPARISON.md`](../docs/METHODOLOGY_COMPARISON.md)
+
 ## 파일 구성
 
 | 파일 | 역할 |
 |------|------|
 | `qubo_wishart.py` | 생성기 |
-| `test_wishart.py` | SA 실험 (alpha sweep, N scaling, Wishart vs Hard Mode, hardness metrics) |
+| `test_wishart.py` | SA 실험 (alpha sweep, N scaling, 비교) |
 
 ## 참고 문헌
 

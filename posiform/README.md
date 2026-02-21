@@ -152,11 +152,17 @@ Q, info = create_qubo_posiform(target, coeff_range=(1.0, 3.0))
 
 ### 다른 방법론과의 비교
 
-| 방법론 | N=100 | N=500 | N=1000 |
-|--------|:-----:|:-----:|:------:|
-| **Posiform** (num_reads=1) | **100%** | **100%** | **100%** |
-| Quiet Planting (field=0.5) | 100% | 20% | 0% |
-| Wishart (alpha=0.7) | ~10% | ~0% | ~0% |
+| 방법론 | N=50 | N=100 | N=200 | N=500 | N=1000 |
+|--------|:----:|:-----:|:-----:|:-----:|:------:|
+| **Posiform** (num_reads=1) | **100%** | **100%** | **100%** | **100%** | **100%** |
+| Zero Expectation | 100% | 100% | 100% | 100% | 100% |
+| Hard Posiform (lin2, α=0.1) | 100% | 100% | 100% | 100% | 100% |
+| Hard Posiform (lin2, α=0.01) | 100% | 100% | 100% | 90% | **40%** |
+| Quiet Planting (field=0.5) | 100% | 60% | 0% | — | — |
+| Wishart (alpha=0.7) | 70% | 0% | 0% | 0% | 0% |
+| McEliece (m=4, t=2) | — | — | — | — | — |
+
+> McEliece는 N별 비교 불가 (k=8 고정, total_vars=33~46). 별도 실험에서 SA ~0%. 전체 비교: [`docs/METHODOLOGY_COMPARISON.md`](../docs/METHODOLOGY_COMPARISON.md)
 
 ### 장점과 한계
 
@@ -177,7 +183,7 @@ Q, info = create_qubo_posiform(target, coeff_range=(1.0, 3.0))
 | 파일 | 역할 |
 |------|------|
 | `qubo_posiform.py` | 생성기 (Tarjan SCC + 2-SAT solver + posiform 변환) |
-| `test_posiform.py` | SA 실험 (N scaling, coeff sweep, 5-way comparison) |
+| `test_posiform.py` | SA 실험 (N scaling, coeff sweep, 비교) |
 
 ## 참고 문헌
 
