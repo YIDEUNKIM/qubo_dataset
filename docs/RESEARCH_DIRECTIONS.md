@@ -7,7 +7,7 @@
 | 생성기              | GS 보장 | SA-hard | 보조변수 | 구별 불가능 | 난이도 조절 | 상태 |
 |------------------|:-------:|:-------:|:--------:|:----------:|:----------:|:----:|
 | Wishart          | 수학적 (유한정밀도 제외) | **O** (alpha<0.95) | 없음 | X (low-rank) | alpha | 완성 |
-| McEliece         | 조건부 (M 의존) | 미측정 | 있음 (대량) | 미분석 | m, t | 완성 |
+| McEliece         | 조건부 (M 의존) | **O** (m=4,t=2) | 있음 (대량) | 미분석 | m, t | 완성 |
 | Quiet Planting   | 조건부 (field 필요) | 중간 | 있음 | **O** (alpha<3.86) | alpha, field | 완성 |
 | Posiform         | **수학적 (유일)** | X (SA-trivial) | 없음 | 미분석 | X | 완성 |
 | Posiform Hardened | **수학적 (유일)** | 조절 가능 | 없음 | X (block-diagonal) | alpha, coeff_type | 완성 |
@@ -38,15 +38,17 @@
 | Quiet Planting | 조건부 | field=0이면 모든 SAT 해가 동일 에너지 (축퇴). field>0 필요 | **조건부** |
 | McEliece | 조건부 | 페널티 M 충분해야 GS 보장. M 부족 시 보조변수 해 오염 | **조건부** |
 
-### 난이도 스펙트럼
+### 난이도 스펙트럼 (SA 실측 데이터 기반, sweeps=1000)
 
 ```
-SA-trivial ◄─────────────────────────────────────────────► SA-hard
-Posiform   ZeroExp   Hardened(α=0.1)   Quiet(f=0.5)   Wishart(α=0.7)
-(100%)     (100%)    (조절가능)          (N↑→0%)        (N≥100→0%)
-                                                                    │
-                                     McEliece ────── 미측정 (이론: O(2^k) PT)
+SA-trivial ◄──────────────────────────────────────────────────────────► SA-hard
+Posiform    ZeroExp    Hard(α=0.1)    Hard(α=0.01)    Quiet(f=0.5)    Wishart(α=0.7)
+100%@N=1K   100%@1K    100%@N=1K      40%@N=1K        0%@N=200        0%@N=100
+                                                          │
+                                            McEliece(m=4,t=2): 0%@k=8 (total_vars=33)
 ```
+
+> 전체 방법론의 정량적 비교 결과는 **[METHODOLOGY_COMPARISON.md](METHODOLOGY_COMPARISON.md)**를 참조.
 
 ### 핵심 딜레마: 3중 트레이드오프
 
@@ -89,7 +91,14 @@ SA-hard, 구별 불가능, 수학적 GS 보장 — 이 세 가지를 동시에 �
 
 ### 2.2 McEliece — Eq.14 Exact Decomposition + QPU 실험
 
-**현재 상태**: 페널티 M 강화 완료 (이론적 하한 기반 + 사후 검증). m=3에서 160/160, m=4에서 10/10 brute force 검증 성공.
+**현재 상태**: SA 실험 프레임워크 완성 (`test_mceliece.py`). m=3,4에서 SA 실험 완료.
+
+**SA 실험 결과 요약**:
+- m=3, t=2: k=2, total_vars=2, SA 100% (trivial — 변수 2개)
+- m=3, t=1: k=4, total_vars=7, SA ~60-80% (aux 3개로 적당히 어려움)
+- m=4, t=2: k=8, total_vars=33, SA **~0%** (aux 25개 → SA-hard)
+- m=4, t=1: k=11, total_vars=71, SA 0% (aux 60개 → 매우 어려움)
+- **m≥5는 Rosenberg 차수축소의 지수적 비용으로 QUBO 생성 자체가 60초+ 소요 → 실험 불가**
 
 **필요 작업**:
 
@@ -97,11 +106,11 @@ SA-hard, 구별 불가능, 수학적 GS 보장 — 이 세 가지를 동시에 �
 |:--------:|------|------|:---------:|
 | **필수** | Eq.14 exact decomposition | 페널티 M 의존성 완전 제거. 논문 Section 2의 identity 구현 | 연구 필요 |
 | 높음 | p-local PT 실험 재현 | 논문의 핵심: p-local Ising에서 O(2^k) parallel tempering 스케일링 | QPU 필요 |
-| 높음 | SA 스케일링 실험 | m 증가에 따른 SA 성공률 변화 측정 (m=3,4,5,6) | 수 시간 |
+| ~~높음~~ | ~~SA 스케일링 실험~~ | ~~m 증가에 따른 SA 성공률 변화 측정~~ | ~~완료~~ |
 | 중간 | Stern 알고리즘 비교 | 고전 최적 공격 복잡도와의 비교 | 연구 필요 |
-| 낮음 | 대규모 실험 (m≥5) | 현재 m=4까지만 실험. m=5 이상에서의 QUBO 크기/품질 평가 | 수 시간 |
+| 낮음 | 대규모 실험 (m≥5) | m≥5는 Rosenberg 차수축소 O(2^w) 비용으로 현재 불가. Eq.14 구현 후 재시도 | Eq.14 후 |
 
-**핵심 이슈**: Eq.14는 p-body 항을 보조변수 없이 2-body로 분해하는 exact identity. 현재 Rosenberg 방식은 보조변수 + 페널티 M이 필요하여 QUBO가 크고, M 부족 시 GS가 깨질 수 있음. Eq.14 구현이 되면 McEliece의 가치가 크게 올라감.
+**핵심 이슈**: Eq.14는 p-body 항을 보조변수 없이 2-body로 분해하는 exact identity. 현재 Rosenberg 방식은 보조변수 + 페널티 M이 필요하여 QUBO가 크고, M 부족 시 GS가 깨질 수 있음. Eq.14 구현이 되면 McEliece의 가치가 크게 올라감. 또한 m≥5의 확장성 문제도 해결됨.
 
 ### 2.3 Quiet Planting — Field 최적화 + 대규모 실험
 
@@ -324,19 +333,19 @@ McEliece의 핵심 미구현 기능 (Eq.14 exact decomposition)을 완성하여 
 
 **목표**: 방향 A 논문의 데이터 수집
 
-1. **Posiform Hardened SA 실험 실행**
-   ```bash
-   python3 hardened_posiform/test_posiform_hardened.py --sweep 10    # Sweep 전이
-   python3 hardened_posiform/test_posiform_hardened.py --scaling 10  # N 스케일링 + vs Plain
-   ```
+1. ~~**Posiform Hardened SA 실험 실행**~~ **완료** (2026-02-20)
+   - Sweep 전이 실험: 논문 4개 핵심 발견 모두 재현 확인
+   - 결과: [METHODOLOGY_COMPARISON.md](METHODOLOGY_COMPARISON.md) Section 5
 
-2. **McEliece SA 스케일링 실험**
-   - m=3,4에서 SA 성공률 측정 (현재 GS 검증만 완료)
-   - N 스케일링: k=4~20 범위
+2. ~~**McEliece SA 스케일링 실험**~~ **완료** (2026-02-20)
+   - `test_mceliece.py`: m-scaling, t-sweep, sweep 전이, 6-way 비교 실험 프레임워크 완성
+   - m=3,4에서 SA 실험 완료: m=4,t=2(k=8, aux=25)에서 SA-hard 확인
+   - **제한**: m≥5는 Rosenberg 차수축소 비용으로 QUBO 생성 불가 → Eq.14 필요
 
-3. **6-way 통합 비교 실험**
-   - 동일 조건 (N=100,500,1000 / sweeps=1000 / reads=100)
-   - 6개 방법론 전부 SA로 비교
+3. ~~**6-way 통합 비교 실험**~~ **완료** (2026-02-20)
+   - 동일 조건 (N=50,100,200,500,1000 / sweeps=1000 / reads=50)
+   - 6개 방법론 SA 비교 (McEliece 포함 — n_bits=8에서 비교)
+   - 결과: [METHODOLOGY_COMPARISON.md](METHODOLOGY_COMPARISON.md)
 
 ### Phase 2: 논문 작성 + QPU 실험 (1~2개월)
 

@@ -159,13 +159,7 @@ Planted field는 대각 성분의 부호를 통해 target 정보를 누출:
 
 ## 5. 다른 생성기와의 비교
 
-| 특성 | Zero-Exp | Hard Mode | Wishart | Quiet Planting |
-|------|----------|-----------|---------|----------------|
-| SA 난이도 | 쉬움 | 쉬움 | 어려움 (alpha~0.7) | field=0.5: N<300 쉬움, N>500 어려움 |
-| 구별 불가능성 | E[q_ij]=0 | 구조 노출 | low-rank 노출 | alpha < 3.86 보장 |
-| QUBO 크기 | n(n-1)/2 | sparse | n^2 | n(1+alpha) |
-| Ground state 유일성 | 유일 (확률적) | 유일 | Z2 대칭 | 축퇴 (field 필요) |
-| 난이도 제어 | density | noise_ratio | alpha | alpha + field |
+> 전체 방법론의 정량적 비교 결과는 **[METHODOLOGY_COMPARISON.md](METHODOLOGY_COMPARISON.md)**를 참조.
 
 ---
 

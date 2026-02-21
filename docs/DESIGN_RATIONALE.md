@@ -30,6 +30,10 @@ $$Q_{ij} = -4J_{ij}, \quad Q_{ii} += 2J_{ij}$$
 | `qubo_zero_expectation.py` | QUBO 직접 | 랜덤과 구별 불가능한 QUBO |
 | `qubo_hard_mode.py` | Ising → QUBO | SA가 풀기 어려운 QUBO |
 | `qubo_wishart.py` | Ising → QUBO | SA가 풀기 어려운 QUBO |
+| `qubo_posiform.py` | 2-SAT → Posiform → QUBO | GS 유일성 수학적 보장 |
+| `qubo_posiform_hardened.py` | Random QUBO + Posiform | GS 보장 + SA 난이도 조절 |
+| `qubo_quiet_planted.py` | 3-SAT → Rosenberg → QUBO | 통계적 구별 불가능 |
+| `qubo_mceliece.py` | McEliece → Ising → QUBO | 암호학적 hardness |
 
 ---
 
@@ -155,8 +159,4 @@ Wishart planted ensemble이 좋은 벤치마크인 이유:
 
 ## 6. 용도별 선택 가이드
 
-| 목적 | 추천 파일 | 핵심 성질 |
-|------|----------|----------|
-| SA/양자 어닐링 성능 벤치마크 | `qubo_wishart.py` | SA-hard, ground state 보장 |
-| 블라인드 벤치마크 (부정행위 방지) | `qubo_zero_expectation.py` | 구별 불가능, ground state 보장 |
-| 기존 Hard Mode 비교 | `qubo_hard_mode.py` | backbone + frustration |
+> 6개 방법론 전체의 용도별 권장 가이드 및 SA 벤치마크 결과는 **[METHODOLOGY_COMPARISON.md](METHODOLOGY_COMPARISON.md)**를 참조.

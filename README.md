@@ -43,12 +43,18 @@ qubo_dataset/
 │   ├── papers/
 │   └── README.md
 │
-└── hardened_posiform/            # Hardened Posiform (Random QUBO + Posiform)
-    ├── qubo_posiform_hardened.py
-    ├── test_posiform_hardened.py
+├── hardened_posiform/            # Hardened Posiform (Random QUBO + Posiform)
+│   ├── qubo_posiform_hardened.py
+│   ├── test_posiform_hardened.py
+│   ├── results/
+│   ├── papers/
+│   └── README.md
+│
+└── mceliece/                    # McEliece Cryptographic QUBO
+    ├── qubo_mceliece.py
+    ├── test_mceliece.py
     ├── results/
-    ├── papers/
-    └── README.md
+    └── papers/
 ```
 
 각 방법론 디렉토리에 `results/`(생성된 QUBO 파일), `papers/`(참조 논문 PDF), `README.md`(상세 문서)가 포함됨.
@@ -61,6 +67,7 @@ qubo_dataset/
 | **Hardened Posiform** | n | **수학적 (유일)** | SA-moderate | 미분석 | **O** | Pelofske et al. 2024 |
 | **Quiet Planting** | n(1+alpha) | 조건부 (field 필요) | field 의존적 | **O** (alpha<3.86) | 조건부 | Krzakala & Zdeborova 2009 |
 | **Posiform** | n | **수학적 (유일)** | SA-easy | 미분석 | **O** | Hahn et al. 2023 |
+| **McEliece** | k+aux | 조건부 (M 의존) | **SA-hard** (m=4) | 미분석 | 조건부 | Mandrà et al. 2024 |
 | **Zero Expectation** | n(n-1)/2 | 수학적 | SA-easy | **O** (E[q_ij]=0) | **O** | 내부 연구 |
 
 > **벤치마크 적합**: 주장하는 ground state가 실제로 맞는지의 신뢰도. "조건부"는 파라미터에 따라 GS가 깨질 수 있음을 의미.
@@ -79,6 +86,9 @@ python3 wishart/qubo_wishart.py 10110 0.7
 
 # Quiet Planting: 통계적 은닉성 (alpha<3.86)
 python3 quiet_planting/qubo_quiet_planted.py 10110 4.2
+
+# McEliece: 암호학적 hardness 기반 QUBO (m=4, t=2)
+python3 mceliece/qubo_mceliece.py 10110
 
 # Zero Expectation: E[q_ij]=0 보장
 python3 zero_expectation/qubo_zero_expectation.py 10110
@@ -99,8 +109,14 @@ python3 wishart/test_wishart.py 100 10
 # Quiet Planting N 스케일링
 python3 quiet_planting/test_quiet_planted.py --scaling 4.2
 
-# 4-way 비교 (Posiform vs Quiet vs Wishart vs ZeroExp)
-python3 posiform/test_posiform.py --compare
+# McEliece m-scaling 실험 (m=3,4에서 SA 성공률)
+python3 mceliece/test_mceliece.py --m-scaling 10
+
+# McEliece sweep 전이 실험
+python3 mceliece/test_mceliece.py --sweep 10
+
+# 6-way 비교 (Posiform vs Hardened vs Quiet vs Wishart vs McEliece vs ZeroExp)
+python3 mceliece/test_mceliece.py --compare 10
 ```
 
 ## 주요 실험 결과 요약
@@ -114,7 +130,7 @@ python3 posiform/test_posiform.py --compare
 | 1000 | **100%** | - | 0% | ~0% | ~100% |
 
 **SA 난이도 분류 기준** (표준 조건: num_sweeps=10N, num_reads=200):
-- **SA-hard**: p(N=500) < 10% — Wishart (alpha=0.7), Quiet Planting (N>300)
+- **SA-hard**: p(N=500) < 10% — Wishart (alpha=0.7), Quiet Planting (N>300), McEliece (m=4,t=2: 0%@k=8)
 - **SA-moderate**: 10% ≤ p(N=500) < 90% — Hardened Posiform (lin2, α=0.01)
 - **SA-easy**: p(N=1000) ≥ 90% — Posiform, Zero Expectation
 
@@ -126,6 +142,7 @@ python3 posiform/test_posiform.py --compare
 |------|------|
 | [Posiform 실험 보고서](docs/POSIFORM_EXPERIMENT.md) | N=1000까지 100% 성공, SA-easy 분석 |
 | [Quiet Planting 실험 보고서](docs/QUIET_PLANTING_EXPERIMENT.md) | 축퇴 문제, planted field, SA 상전이 |
+| [방법론 비교](docs/METHODOLOGY_COMPARISON.md) | 7개 방법론 SA 벤치마크 종합 비교 |
 | [각 방법론 README](posiform/README.md) | 이론, 구현, 파라미터, 참고문헌 |
 
 ## 의존성
