@@ -34,15 +34,14 @@
 |---|:---:|:---:|:---:|:---:|:---:|
 | **Zero Expectation** | 100 | 100 | 100 | 100 | 100 |
 | **Wishart (alpha=0.7)** | 70 | 0 | 0 | 0 | 0 |
-| **Quiet Planting (alpha=4.2, f=0.5)** | 100 | 60 | 0 | — | — |
+| **Quiet Planting (alpha=4.2, f=0.5)** | 100 | 60 | 0 | 0 | 0 |
 | **Posiform** | 100 | 100 | 100 | 100 | — |
 | **Hard Posiform (lin2, alpha=0.1)** | 100 | 100 | 100 | 100 | 100 |
 | **Hard Posiform (lin2, alpha=0.01)** | 100 | 100 | 100 | 90 | **40** |
 | **McEliece (m=4, t=2)** | — | — | — | — | — |
 
-- (—): 생성 시간 또는 QUBO 크기 제약으로 미측정
 - McEliece: N별 비교 불가 (k=8 고정, total_vars=33~46). 별도 실험에서 SA 성공률 ~0% (10000 sweeps에서도 ~5%). 자세한 결과는 아래 Section 5.1 참조
-- Quiet Planting: N=500+에서 QUBO 크기가 ~2,600 변수로 SA 비용 급증
+- Quiet Planting: QUBO 크기 = n(1+alpha). N=500 → 2,600 변수, N=1000 → 5,200 변수. SA 상전이: N~200 (sweeps=1000 조건)
 - Posiform: N=1000에서 2-SAT 유일성 검사 생성 시간 ~108초로 실험 제외
 
 ### 2.2 난이도 순서 (SA 기준)
@@ -56,6 +55,20 @@ ZeroExp     Posiform    Hard(α=0.1)    Hard(α=0.01)    Quiet(f=0.5)    Wishart
                                               McEliece(m=4,t=2): ~0%@k=8
 ```
 
+### 2.3 Quiet Planting 상세 스케일링 (표준 조건)
+
+num_reads=200, num_sweeps=max(1000, 10×total_vars), alpha=4.2, field_strength=0.5:
+
+| N | QUBO vars | Sweeps | 성공률 | Avg Hamming |
+|---:|---:|---:|---:|---:|
+| 100 | 520 | 5,200 | **100%** | 0.0 |
+| 200 | 1,040 | 10,400 | **100%** | 0.0 |
+| 300 | 1,560 | 15,600 | **40%** | 0.7 |
+| 500 | 2,600 | 26,000 | **0%** | 1.4 |
+| 750 | 3,900 | 39,000 | **0%** | ~3.8 |
+
+**SA 상전이**: N~300 (표준 조건 기준). QUBO 크기가 n(1+alpha) = 5.2n으로 팽창하여 SA 비용이 급증하지만, Hamming distance는 작음 (N=500에서 1.4) → target 근처까지 접근하나 정확히 도달하지 못하는 glassy 거동.
+
 ---
 
 ## 3. 평균 Hamming Distance
@@ -66,14 +79,14 @@ SA가 찾은 해와 target 사이의 비트 차이. 0이면 정확히 일치, N/
 |---|:---:|:---:|:---:|:---:|:---:|
 | **Zero Expectation** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | **Wishart (alpha=0.7)** | 5.4 | 43.1 | 86.2 | 231.9 | 467.2 |
-| **Quiet Planting** | 0.0 | 0.6 | 4.6 | — | — |
+| **Quiet Planting** | 0.0 | 0.6 | 4.6 | 19.6 | 42.9 |
 | **Posiform** | 0.0 | 0.0 | 0.0 | 0.0 | — |
 | **Hard Posiform (lin2, alpha=0.1)** | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
 | **Hard Posiform (lin2, alpha=0.01)** | 0.0 | 0.0 | 0.0 | 0.4 | 3.1 |
 
 **실패 양상의 차이**:
 - **Wishart**: Hamming ~ N/2 → SA가 metastable trap에 갇혀 target과 완전히 다른 위치에 도달. "길을 완전히 잃음"
-- **Quiet Planting**: Hamming 2~5 → SA가 target 근처까지 접근하지만 마지막 몇 비트를 뒤집지 못함. 전형적 glassy 거동
+- **Quiet Planting**: N≤200에서 Hamming 2~5 (near-miss), N=500에서 19.6, N=1000에서 42.9 → N 증가 시 SA가 점점 더 멀리 도달. Wishart와 달리 N/2까지는 가지 않음
 - **Hard Posiform (alpha=0.01)**: Hamming 0~3 → Quiet Planting과 유사한 near-miss 패턴
 
 ---
@@ -86,7 +99,7 @@ SA가 찾은 해와 target 사이의 비트 차이. 0이면 정확히 일치, N/
 |---|---:|---:|---:|---:|---:|---|
 | **Zero Expectation** | 1,275 | 5,050 | 20,100 | 125,250 | 500,500 | N(N+1)/2 (dense) |
 | **Wishart** | 1,275 | 5,050 | 20,100 | 125,250 | 500,500 | N(N-1)/2 (dense) |
-| **Quiet Planting** | 1,038 | 2,107 | 4,255 | — | — | O(N*alpha) (sparse) |
+| **Quiet Planting** | 1,038 | 2,107 | 4,255 | 10,707 | 21,427 | O(N*alpha) (sparse) |
 | **Posiform** | 353 | 790 | 1,897 | 5,247 | — | O(N*clauses) (sparse) |
 | **Hard Posiform** | 540 | 1,314 | 3,148 | 8,424 | 17,497 | O(N*k) (sparse) |
 | **McEliece (m=4,t=2)** | — | — | — | — | — | k + O(kN) (보조변수 포함) |
@@ -165,7 +178,7 @@ McEliece는 다른 방법론과 달리 QUBO 크기가 m,t에 의해 결정되므
 | **난이도 파라미터** | density | alpha (M/N) | alpha, field | coeff_range | coeff_type, alpha_scale | m, t |
 | **GS 보장** | 수학적 | 수학적 (유한정밀도 주의) | field 의존 | 수학적 (Tarjan SCC) | 수학적 | 조건부 (M 의존) |
 | **GS 유일성** | Z2 대칭 | Z2 대칭 | field 필요 | **유일 (증명)** | **유일 (증명)** | 조건부 |
-| **구별 불가능성** | E[q_ij]=0 보장 | X (low-rank) | alpha<3.86 보장 | 미보장 | X (block-diagonal) | 미분석 |
+| **구별 불가능성** | 대각만 가능 (E[q_ij]=0) | X (low-rank) | alpha<3.86 보장 | X (sparse, 대각편향) | X (block-diagonal) | 미분석 |
 | **보조변수** | 없음 | 없음 | 있음 (n+m) | 없음 | 없음 | **있음 (대량)** |
 | **SA 상전이** | 없음 | alpha_c ~ 0.95 | N~300 (f=0.5) | 없음 | N~500 (alpha=0.01) | m=3→4 전이 |
 | **생성 시간** | O(N^2) 빠름 | O(N^2) 빠름 | O(N) 빠름 | O(N^2.5) 느림 | O(N^2.5) 느림 | O(2^w) (m≥5 불가) |
@@ -179,10 +192,10 @@ SA-hard, 구별 불가능, 수학적 GS 보장 — 세 가지를 동시에 달�
 
 | 방법론 | SA-hard | 구별 불가능 | GS 보장 |
 |--------|:-------:|:----------:|:-------:|
-| Zero Expectation | X | **O** | **O** |
+| Zero Expectation | X | **O** (대각만 누출) | **O** |
 | Wishart | **O** | X | 조건부 |
 | Quiet Planting | 중간 | **O** | 조건부 |
-| Posiform | X | 미보장 | **O** |
+| Posiform | X | X | **O** |
 | Hard Posiform | **조절 가능** | X | **O** |
 | McEliece | **O** (m=4) | 미분석 | 조건부 (M 의존) |
 

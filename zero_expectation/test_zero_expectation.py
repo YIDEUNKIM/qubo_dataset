@@ -14,7 +14,7 @@ import neal
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from zero_expectation.qubo_zero_expectation import create_qubo_precise, DefaultZeroExpectationModel
+from zero_expectation.qubo_zero_expectation import create_qubo_precise, ZeroOffDiagonalModel
 from qubo_utils import calculate_energy
 
 
@@ -52,7 +52,7 @@ def run_scaling_experiment(sizes=None, num_runs=10, num_reads=200, num_sweeps=10
     print("=" * 90)
 
     sampler = neal.SimulatedAnnealingSampler()
-    model = DefaultZeroExpectationModel()
+    model = ZeroOffDiagonalModel()
     results = []
 
     for n in sizes:

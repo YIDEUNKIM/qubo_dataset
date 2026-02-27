@@ -148,6 +148,64 @@ num_reads=50, num_sweeps=1000:
 
 Hardened posiform (α=0.01)은 N=500부터 SA 성공률이 감소하기 시작하며, N=1000에서 40%로 SA-moderate 영역에 진입한다.
 
+### 구별 불가능성 분석
+
+N=100, 30회 반복 실험 결과. Hardened Posiform QUBO는 순수 random QUBO와 **쉽게 구별 가능**하다.
+
+#### 1. Block-Diagonal 구조 (핵심 탐지 경로)
+
+Q_final = Σ R_i + α × P에서 R_i는 각 subgraph 내부에만 존재하고, P만이 subgraph 간 연결을 생성한다. α가 작으므로 off-block 항이 극히 작다:
+
+| 구분 | lin2, α=0.01 | lin2, α=0.1 | lin20, α=0.01 | Random QUBO |
+|------|:---:|:---:|:---:|:---:|
+| **On-block std** | 1.000 | 1.002 | 0.606 | — |
+| **Off-block std** | **0.004** | **0.037** | **0.004** | — |
+| **전체 std** | 0.367 | 0.369 | 0.222 | 1.000 (lin2) |
+| **Off-block |값|>0.5 비율** | **0.0%** | **0.0%** | **0.0%** | 100% (lin2) |
+| **KS test (off-block vs random)** | p=0 | p=0 | p=0 | — |
+
+**결론**: Q 행렬의 (i,j) 항 크기를 확인하는 것만으로 subgraph 파티션 구조가 즉시 드러난다. off-block 항이 0에 가깝다는 것은 random QUBO에서는 절대 나타나지 않는 특성이다.
+
+#### 2. 대각 편향 (target 비트 노출)
+
+| Config | E[Q_ii\|b=0] | E[Q_ii\|b=1] | 편향 | t-test p |
+|--------|:---:|:---:|:---:|:---:|
+| lin2, α=0.01 | +0.36 | -0.29 | **-0.65** | <0.0001 |
+| lin2, α=0.1 | +0.53 | -0.47 | **-0.99** | <0.0001 |
+| lin20, α=0.01 | +0.19 | -0.14 | **-0.34** | <0.0001 |
+
+Posiform은 target bit=1인 변수에 음의 선형 편향, bit=0인 변수에 양의 선형 편향을 추가한다. Q_ii의 부호만으로 target bit 추측이 가능하다.
+
+#### 3. 계수 분포 (Kurtosis)
+
+| | Hardened (lin2, α=0.01) | Random QUBO (lin2) |
+|---|:---:|:---:|
+| **Kurtosis** | **4.44** | **-2.00** |
+| **분포 형태** | bimodal (0 근처 + ±1 근처) | uniform {-1, +1} |
+
+대부분의 항이 off-block(≈0)이고 일부만 on-block(±1)이므로 bimodal 분포가 나타나며, kurtosis가 극단적으로 다르다.
+
+#### 4. 행 합 편향
+
+| Config | E[row\_sum\|b=0] | E[row\_sum\|b=1] | t-test p |
+|--------|:---:|:---:|:---:|
+| lin2, α=0.01 | +2.97 | -2.01 | <0.0001 |
+| lin2, α=0.1 | +3.22 | -2.28 | <0.0001 |
+
+행 합이 target bit와 강하게 상관되어 target 복원이 가능하다.
+
+#### 5. 구별 불가능한 속성
+
+| 속성 | 구별 가능? | 비고 |
+|------|:---:|------|
+| **Block-diagonal 구조** | **O (trivial)** | off-block 항 ≈ 0 |
+| **대각 편향** | **O** | target bit 노출 |
+| **행 합 편향** | **O** | target bit 노출 |
+| **계수 분포 (kurtosis)** | **O** | bimodal vs uniform |
+| Rank 구조 | X | 둘 다 full-rank (~100/100) |
+
+**종합**: Hardened Posiform은 block-diagonal 구조, 대각/행 합 편향, kurtosis 등 **다수의 경로로 쉽게 탐지 가능**하다. 이는 설계 의도와 일치한다 — Hardened Posiform의 목적은 통계적 은닉이 아니라 **SA 난이도 증가 + GS 유일성 보장**이다.
+
 ### 다른 방법론과의 위치
 
 | 방법론 | SA 난이도 | GS 보장 | 난이도 조절 | N=500 성공률 |
@@ -156,9 +214,9 @@ Hardened posiform (α=0.01)은 N=500부터 SA 성공률이 감소하기 시작�
 | **Hardened (α=0.1)** | easy~moderate | **수학적 (유일)** | **O** | 100% |
 | **Hardened (α=0.01)** | **moderate** | **수학적 (유일)** | **O** | **90%** |
 | Zero Expectation | trivially easy | 수학적 | X | 100% |
-| Quiet Planting (f=0.5) | medium | 조건부 | O | — |
+| Quiet Planting (f=0.5) | medium | 조건부 | O | 0% |
 | Wishart (α=0.7) | **hard** | 수학적 (유한정밀도) | O | 0% |
-| McEliece (m=4,t=2) | **hard** | 조건부 | O | — |
+| McEliece (m=4,t=2) | **hard** | 조건부 | O | ~0% (k=8) |
 
 > 전체 방법론의 정량적 비교: [`docs/METHODOLOGY_COMPARISON.md`](../docs/METHODOLOGY_COMPARISON.md)
 

@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from zero_expectation.qubo_zero_expectation import create_qubo_precise, DefaultZeroExpectationModel
+from zero_expectation.qubo_zero_expectation import create_qubo_precise, ZeroOffDiagonalModel
 from wishart.qubo_wishart import create_qubo_wishart
 
 
@@ -102,7 +102,7 @@ random.seed(42)
 np.random.seed(42)
 target = "10110"
 
-Q_ze = create_qubo_precise(target, density=1.0, model=DefaultZeroExpectationModel())
+Q_ze = create_qubo_precise(target, density=1.0, model=ZeroOffDiagonalModel())
 Q_w = create_qubo_wishart(target, alpha=0.7, seed=42)
 
 analyze_q("Zero-Expectation (N=5)", Q_ze, 5, target)
@@ -131,7 +131,7 @@ for trial in range(n_trials):
     target = ''.join(str(random.randint(0, 1)) for _ in range(n))
 
     # Zero-Expectation
-    Q = create_qubo_precise(target, density=1.0, model=DefaultZeroExpectationModel())
+    Q = create_qubo_precise(target, density=1.0, model=ZeroOffDiagonalModel())
     M = to_matrix(Q, n)
     diag = np.diag(M)
     eigvals = np.linalg.eigvalsh(M)
@@ -193,7 +193,7 @@ w_corrs = []
 for trial in range(20):
     target = ''.join(str(random.randint(0, 1)) for _ in range(n))
 
-    Q = create_qubo_precise(target, density=1.0, model=DefaultZeroExpectationModel())
+    Q = create_qubo_precise(target, density=1.0, model=ZeroOffDiagonalModel())
     M = to_matrix(Q, n)
     # 행 0의 비대각 원소 vs 행 1의 비대각 원소 상관
     row0 = [M[0][j] for j in range(2, n)]

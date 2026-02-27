@@ -9,7 +9,7 @@ This repository generates **QUBO (Quadratic Unconstrained Binary Optimization) b
 ## Key Concepts
 
 - **QUBO**: Minimize E(x) = x^T Q x over binary variables x_i in {0,1}. NP-hard in general.
-- **Zero Expectation**: The generated Q matrix coefficients should have E[q_ii] = 0 and E[q_ij] = 0, making the problem indistinguishable from random QUBO. Achieved by LP-optimized penalty ratios (e.g., sampling E[r0], E[r0'] at 3x other values).
+- **Zero Expectation**: The generated Q matrix off-diagonal coefficients satisfy E[q_ij] = 0, making them indistinguishable from random QUBO. Default model (ZeroOffDiagonalModel): double-flip penalty ratio = single-flip ratio sum → ratio set {1, 1, 2} for all target pairs. Diagonal E[q_ii] ≠ 0 (reveals b_i sign), but detection SNR ~ √n is weaker than off-diagonal leakage SNR ~ n. Simultaneous E[q_ij]=0 and E[q_ii]=0 is proven impossible under positive penalty constraint.
 - **Penalty Construction (from PDF Step 1 & 2)**: For each non-optimal (x_i, x_j) pair, add r * indicator_function as penalty. Three penalty terms per qubit pair, each with independent random r > 0.
 - **Ising Conversion**: QUBO variables x_i in {0,1} map to spins s_i in {-1,+1} via s = 2x - 1.
 - **Quiet Planting**: Planted random 3-SAT where target satisfies all clauses. Rosenberg reduction linearizes cubic penalty z1*z2*z3 into QUBO with auxiliary variable y=z1*z2. Clause density alpha=m/n; alpha < 3.86 ensures statistical indistinguishability from random 3-SAT (Krzakala & Zdeborova, 2009). **Degeneracy problem**: all SAT solutions have identical QUBO energy (penalty=0), so clause weights alone cannot distinguish the planted target. A **planted field** (small linear bias per variable) is required to break degeneracy and make the target uniquely recoverable.
@@ -70,9 +70,11 @@ qubo_dataset/
 
 ### QUBO Generators (core)
 - **`zero_expectation/qubo_zero_expectation.py`** - **Primary generator.** Uses Strategy Pattern with `PenaltyModel` ABC:
-  - `DefaultZeroExpectationModel` - LP-derived ratios (e.g., target=(0,0): penalties {(0,1):1.0, (1,0):1.0, (1,1):1.65})
+  - `ZeroOffDiagonalModel` **(default)** - Off-diagonal E[q_ij]=0 guaranteed. Ratio {1, 1, 2}: double-flip = single-flip sum. Unique minimax optimal under off-diagonal zero constraint.
+  - `DefaultZeroExpectationModel` **[DEPRECATED]** - LP-derived ratios (1.64, 1.68 etc). Off-diagonal E[q_ij] ≠ 0 (LP counting assumption mismatches current 3-penalty-all-added code).
+  - `BalancedModel` **[DEPRECATED]** - Minimax bias model. Only target (0,0) achieves off-diagonal zero; others leak.
   - `SimpleUniformModel` - Equal penalty for all wrong states (baseline comparison)
-  - `create_qubo_precise(target, density, model)` - Main entry point
+  - `create_qubo_precise(target, density, model)` - Main entry point (default: ZeroOffDiagonalModel)
   - `create_qubo_ising_derived(target)` - Alternative: derives QUBO from Ising model (J_ij = alpha * s_i * s_j), guarantees E[row sum] = 0
 - **`wishart/qubo_wishart.py`** - **Wishart Planted Ensemble generator.** Constructs SA-hard QUBO via orthogonal Gaussian projection (W^T t = 0). Difficulty controlled by alpha=M/N parameter. Phase transition at alpha_c ≈ 0.95 (N=100). See `docs/WISHART_EXPERIMENT.md` for details.
 - **`quiet_planting/qubo_quiet_planted.py`** - **Quiet Planting generator.** Planted random 3-SAT → Rosenberg reduction → QUBO. Clause density alpha=m/n controls difficulty. QUBO size = n(1+alpha) (auxiliary variables). Key parameters:

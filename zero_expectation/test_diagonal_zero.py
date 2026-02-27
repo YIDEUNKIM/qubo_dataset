@@ -6,11 +6,15 @@ TDD Step 1 (RED): 대각 항 기댓값 0 테스트
 """
 
 import random
+import warnings
 import numpy as np
 import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 비교 분석 스크립트이므로 deprecated 모델의 경고 억제
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from zero_expectation.qubo_zero_expectation import (
     create_qubo_precise,

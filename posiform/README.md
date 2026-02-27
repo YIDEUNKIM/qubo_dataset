@@ -164,6 +164,64 @@ Q, info = create_qubo_posiform(target, coeff_range=(1.0, 3.0))
 
 > McEliece는 N별 비교 불가 (k=8 고정, total_vars=33~46). 별도 실험에서 SA ~0%. 전체 비교: [`docs/METHODOLOGY_COMPARISON.md`](../docs/METHODOLOGY_COMPARISON.md)
 
+### 구별 불가능성 분석
+
+N=100, 30회 반복 실험 결과. Posiform QUBO는 순수 random QUBO와 **다수의 경로로 쉽게 구별 가능**하다.
+
+#### 1. 밀도 (Sparsity) — 즉시 탐지
+
+| | Posiform | Random QUBO |
+|---|:---:|:---:|
+| **Density** (비영 항 / 전체) | **15.1%** | **100%** |
+
+Posiform은 2-SAT clause에 등장하는 변수 쌍만 Q_ij가 비영이다. 나머지 85%의 항이 0이므로, Q 행렬의 sparsity 패턴만으로 즉시 구별된다. Random QUBO는 모든 항이 비영.
+
+#### 2. 비대각 부호 편향 — target pair 노출 (핵심!)
+
+각 clause는 하나의 wrong tuple을 배제하며, Q_ij 기여의 부호는 wrong tuple에 의해 결정된다:
+
+| Target pair (b_i, b_j) | E[Q_ij] | 양수 비율 | 해석 |
+|:---:|:---:|:---:|---|
+| (0, 0) | **-0.70** | 33% | 음수 편향 |
+| (0, 1) | **+0.72** | 67% | 양수 편향 |
+| (1, 0) | **+0.70** | 67% | 양수 편향 |
+| (1, 1) | **-0.70** | 33% | 음수 편향 |
+
+**규칙: target[i] == target[j]이면 Q_ij < 0, 다르면 Q_ij > 0 (확률 2/3).**
+
+t-test (same vs diff): stat=-50.14, **p ≈ 0**. Q_ij의 부호 패턴에서 target[i]와 target[j]의 동일 여부가 즉시 드러난다.
+
+**이론적 근거**: target pair (t_i, t_j)에 대해 3개의 wrong tuple 중:
+- same bits (00 또는 11): wrong tuple 중 2개가 다른 비트 → Q_ij에 음수 기여 2/3
+- diff bits (01 또는 10): wrong tuple 중 2개가 같은 비트 → Q_ij에 양수 기여 2/3
+
+#### 3. 대각 편향 — target 비트 직접 노출
+
+| | E[Q_ii\|b=0] | E[Q_ii\|b=1] | 편향 |
+|---|:---:|:---:|:---:|
+| **Posiform** | **+4.47** | **-4.55** | **-9.02** |
+
+t-test: p ≈ 0. 대각 항의 부호만으로 각 변수의 target 값을 직접 추측 가능.
+
+#### 4. 행 합 편향
+
+| | E[row\_sum\|b=0] | E[row\_sum\|b=1] | t-test p |
+|---|:---:|:---:|:---:|
+| **Posiform** | **+4.87** | **-4.71** | ≈ 0 |
+
+#### 5. 구별 불가능한 속성
+
+| 속성 | 구별 가능? | 비고 |
+|------|:---:|------|
+| **밀도 (sparsity)** | **O (trivial)** | 15% vs 100% |
+| **비대각 부호 패턴** | **O** | target pair에 의존 |
+| **대각 편향** | **O** | target bit 직접 노출 |
+| **행 합 편향** | **O** | target bit 직접 노출 |
+| Rank 구조 | X | 둘 다 full-rank (100/100) |
+| 비대각 양수/음수 비율 | X | 50.2% / 49.8% ≈ 50/50 |
+
+**종합**: Posiform QUBO는 밀도, 대각 편향, 비대각 부호 패턴 등 **다수의 경로로 쉽게 탐지 가능**하다. 이는 설계 의도와 일치한다 — Posiform의 목적은 통계적 은닉이 아니라 **유일한 GS의 수학적 보장 + 보조변수 없는 컴팩트 QUBO 생성**이다.
+
 ### 장점과 한계
 
 **장점**:

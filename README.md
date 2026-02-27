@@ -64,11 +64,11 @@ qubo_dataset/
 | 생성기 | QUBO 크기 | Ground State | SA 난이도 | 구별 불가능 | 벤치마크 적합 | 핵심 논문 |
 |--------|:---------:|:-----------:|:---------:|:----------:|:----------:|----------|
 | **Wishart** | n | 수학적 (유한정밀도 제외) | **SA-hard** | X (low-rank) | 조건부 | Hamze et al. 2020 |
-| **Hardened Posiform** | n | **수학적 (유일)** | SA-moderate | 미분석 | **O** | Pelofske et al. 2024 |
-| **Quiet Planting** | n(1+alpha) | 조건부 (field 필요) | field 의존적 | **O** (alpha<3.86) | 조건부 | Krzakala & Zdeborova 2009 |
-| **Posiform** | n | **수학적 (유일)** | SA-easy | 미분석 | **O** | Hahn et al. 2023 |
+| **Hardened Posiform** | n | **수학적 (유일)** | SA-moderate | X (block-diagonal) | **O** | Pelofske et al. 2024 |
+| **Quiet Planting** | n(1+alpha) | 조건부 (field 필요) | SA-medium (f=0.5) | **O** (alpha<3.86) | 조건부 | Krzakala & Zdeborova 2009 |
+| **Posiform** | n | **수학적 (유일)** | SA-easy | X (sparse, 대각편향) | **O** | Hahn et al. 2023 |
 | **McEliece** | k+aux | 조건부 (M 의존) | **SA-hard** (m=4) | 미분석 | 조건부 | Mandrà et al. 2024 |
-| **Zero Expectation** | n(n-1)/2 | 수학적 | SA-easy | **O** (E[q_ij]=0) | **O** | 내부 연구 |
+| **Zero Expectation** | n | 수학적 | **SA-trivial** | **O** (E[q_ij]=0) | **O** | 내부 연구 |
 
 > **벤치마크 적합**: 주장하는 ground state가 실제로 맞는지의 신뢰도. "조건부"는 파라미터에 따라 GS가 깨질 수 있음을 의미.
 
@@ -121,20 +121,28 @@ python3 mceliece/test_mceliece.py --compare 10
 
 ## 주요 실험 결과 요약
 
-### SA 성공률 비교 (num_reads=1~200)
+### SA 성공률 비교 (num_reads=200, num_sweeps=max(1000, 10×QUBO_vars))
 
-| N | Posiform | Hardened (lin2,α=0.01) | Quiet (field=0.5) | Wishart (alpha=0.7) | ZeroExp |
-|---:|:--------:|:---------------------:|:-----------------:|:-------------------:|:-------:|
-| 100 | **100%** | ~100% | 100% | ~10% | ~100% |
-| 500 | **100%** | **~13%** (500 sweeps) | 20% | ~0% | ~100% |
-| 1000 | **100%** | - | 0% | ~0% | ~100% |
+| N | Posiform | Hardened (lin2,α=0.01) | Quiet (α=4.2, f=0.5) | Wishart (α=0.7) | ZeroExp |
+|---:|:--------:|:---------------------:|:--------------------:|:-------------------:|:-------:|
+| 100 | **100%** | ~100% | **100%** | ~10% | **100%** |
+| 200 | **100%** | ~100% | **100%** | ~0% | **100%** |
+| 300 | **100%** | ~100% | **40%** | ~0% | **100%** |
+| 500 | **100%** | ~90% | **0%** | ~0% | **100%** |
+| 1000 | **100%** | ~40% | 0% | ~0% | **100%** |
 
-**SA 난이도 분류 기준** (표준 조건: num_sweeps=10N, num_reads=200):
-- **SA-hard**: p(N=500) < 10% — Wishart (alpha=0.7), Quiet Planting (N>300), McEliece (m=4,t=2: 0%@k=8)
+**SA 난이도 분류 기준** (표준 조건: num_sweeps=10×QUBO_vars, num_reads=200):
+- **SA-trivial**: p(N=1000) = 100%, local minima 1개 — **Zero Expectation**
+- **SA-easy**: p(N=1000) ≥ 90% — Posiform
 - **SA-moderate**: 10% ≤ p(N=500) < 90% — Hardened Posiform (lin2, α=0.01)
-- **SA-easy**: p(N=1000) ≥ 90% — Posiform, Zero Expectation
+- **SA-hard**: p(N=500) < 10% — Wishart (α=0.7), Quiet Planting (N>300), McEliece (m=4,t=2: ~0%@k=8)
 
-자세한 분석: [`docs/POSIFORM_EXPERIMENT.md`](docs/POSIFORM_EXPERIMENT.md), [`docs/QUIET_PLANTING_EXPERIMENT.md`](docs/QUIET_PLANTING_EXPERIMENT.md)
+**SA 실패 양상의 차이**:
+- **Wishart**: Hamming ~ N/2 → SA가 metastable trap에 빠져 target과 완전히 다른 위치에 도달
+- **Quiet Planting**: Hamming 1~3 → SA가 target 근처까지 접근하나 마지막 몇 비트를 못 뒤집음 (glassy)
+- **Zero Expectation**: frustration = 0, 에너지 지형이 단일 funnel → SA가 항상 target 도달
+
+자세한 분석: [`docs/POSIFORM_EXPERIMENT.md`](docs/POSIFORM_EXPERIMENT.md), [`docs/QUIET_PLANTING_EXPERIMENT.md`](docs/QUIET_PLANTING_EXPERIMENT.md), [`zero_expectation/README.md`](zero_expectation/README.md)
 
 ## 문서
 
