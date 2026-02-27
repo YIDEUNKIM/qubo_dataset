@@ -118,6 +118,39 @@ lin2는 계수가 {-1, +1}뿐이어서 에너지 landscape에 거대한 평탄 �
 
 lin20은 계수가 21가지로 다양하여 plateau가 적고, 축퇴도가 낮은 대신 에너지 landscape이 더 울퉁불퉁하여 실질적으로 더 어렵다.
 
+## 논문 기여 가능성 — Pelofske et al. (2024)에 대한 반박
+
+### 원 논문의 주장
+
+Pelofske et al. (2024)는 hardened posiform의 난이도가 α를 줄임으로써 증가한다고 주장한다. 논문은 α=0.01을 "가장 어려운" 설정으로 제시하며, 이를 양자 어닐러 벤치마크로 사용할 것을 제안한다. 논문의 암묵적 전제는 **posiform은 GS 유일성을 보장하는 필수 장치이고, random QUBO(Σ R_i)가 난이도의 원천**이라는 것이다.
+
+### 우리 실험이 드러낸 문제
+
+1. **"α를 줄이면 어렵다"는 주장의 한계**: α를 극단까지(α=0) 줄이면 성공률 0%로 "가장 어렵다". 그러나 에너지 분석 결과, SA는 ground state 에너지를 79% 찾고 있다. 0%는 landscape 복잡성이 아닌 축퇴에 의한 것이다. 논문의 난이도 메트릭(target sampling rate)은 **genuine hardness와 degeneracy를 구분하지 못한다.**
+
+2. **Posiform의 간과된 역할**: 논문은 posiform을 "GS 유일성 보장"으로만 서술한다. 그러나 posiform은 동시에 SA에게 target 방향으로의 gradient signal을 제공한다. α를 줄이면 이 signal이 약해져서 SA 성공률이 낮아지는데, 이는 "문제가 어려워진" 것이 아니라 "힌트가 줄어든" 것이다. **Posiform은 난이도를 높이는 장치가 아니라 오히려 낮추는 장치**라는 역설이 존재한다.
+
+3. **벤치마크 유효성 문제**: QUBO 벤치마크의 목적이 "솔버가 최적해를 찾을 수 있는가?"일 때, α=0에서 솔버는 최적해를 찾고 있지만 planted target이 아닌 다른 degenerate 최적해를 찾는다. 이는 벤치마크 자체의 well-definedness를 훼손한다. 유일한 정답이 없는 문제를 벤치마크로 쓸 수 없기 때문이다.
+
+### 잠재적 논문 구성
+
+| 섹션 | 내용 |
+|---|---|
+| 문제 제기 | Pelofske et al.의 "α 감소 → 난이도 증가" 주장을 α=0으로 확장하면 모순 발생 |
+| 실험 결과 | α=0에서 target sampling rate 0%이지만 GS 에너지 일치율 79% (lin2) |
+| 분석 | Degeneracy vs Genuine Hardness 분리 — 에너지 분석을 통한 정량적 구분 |
+| Posiform의 이중 역할 | 축퇴 제거 + gradient signal 제공. planted problem 일반의 fundamental tension |
+| 벤치마크 제안 | target sampling rate 대신 에너지 기반 메트릭(GS 에너지 도달률, energy gap 등) 사용 제안 |
+| 일반화 | Quiet Planting 등 다른 planted problem에서도 동일한 degeneracy-hardness 혼동 존재 |
+
+### 핵심 메시지
+
+Planted QUBO 벤치마크에서 **답을 유일하게 만드는 장치(posiform)는 필연적으로 솔버에게 signal을 제공**한다. 이는 planted problem의 근본적 딜레마이다:
+- signal 없이 유일성을 보장할 수 없고
+- signal이 있으면 솔버가 이를 이용하여 문제가 쉬워진다
+
+이 딜레마를 정량적으로 보여주는 것이 α=0 실험의 의의이다.
+
 ## 실험 파일
 
 - `hardened_posiform/experiment_alpha_zero.py` — Sweep 전이 비교 (α=0 vs 0.01 vs 0.1)
