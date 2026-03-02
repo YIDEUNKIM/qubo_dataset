@@ -29,6 +29,7 @@ import itertools
 import sys
 import os
 import time
+import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -233,6 +234,13 @@ def create_qubo_hardened_posiform(n, max_subgraph_size=15, coeff_type='lin2',
             )
             if posiform_info['is_unique']:
                 break
+
+    if not posiform_info['is_unique']:
+        warnings.warn(
+            f"Posiform uniqueness 보장 실패 (n={n}, seed={seed}): "
+            f"5회 재시도 후에도 유일한 2-SAT 해를 생성하지 못했습니다. "
+            f"Ground state uniqueness가 보장되지 않습니다."
+        )
 
     # Step 6: 결합 — Q_final = Σ R_i + α × P
     Q_final = {}
