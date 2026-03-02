@@ -17,7 +17,8 @@ import neal
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from truthtable.qubo_truthtable import (
-    create_qubo_truthtable, preset_energy_gap, preset_multi_valley,
+    create_qubo_truthtable, create_qubo_approx,
+    preset_energy_gap, preset_multi_valley,
     compute_aux_values
 )
 from qubo_utils import calculate_energy
@@ -245,7 +246,37 @@ def run_comparison(n_bits=5, num_runs=10, num_reads=100, num_sweeps=5000):
     sampler = neal.SimulatedAnnealingSampler()
     results = {}
 
-    # --- Truth Table: Energy Gap ---
+    # --- Approx: Energy Gap ---
+    gs_total, samples_total = 0, 0
+    t0 = time.time()
+    for run in range(num_runs):
+        target = ''.join([str(random.randint(0, 1)) for _ in range(n_bits)])
+        tt = preset_energy_gap(n_bits, target, gap=1.0, seed=run)
+        Q, info = create_qubo_approx(tt, verbose=False)
+        gs, reads, _ = run_sa_on_truthtable(Q, info, num_reads, num_sweeps)
+        gs_total += gs
+        samples_total += reads
+    rate = 100.0 * gs_total / samples_total if samples_total > 0 else 0
+    print(f"  Approx-Gap       | {rate:>6.2f}% ({time.time()-t0:.1f}s)")
+    results['Approx-Gap'] = rate
+
+    # --- Approx: Multi-Valley ---
+    gs_total, samples_total = 0, 0
+    t0 = time.time()
+    for run in range(num_runs):
+        rng = np.random.default_rng(run)
+        t1 = ''.join([str(rng.integers(0, 2)) for _ in range(n_bits)])
+        t2 = ''.join([str(1 - int(c)) for c in t1])
+        tt = preset_multi_valley(n_bits, [t1, t2], gap=0.5, seed=run)
+        Q, info = create_qubo_approx(tt, verbose=False)
+        gs, reads, _ = run_sa_on_truthtable(Q, info, num_reads, num_sweeps)
+        gs_total += gs
+        samples_total += reads
+    rate = 100.0 * gs_total / samples_total if samples_total > 0 else 0
+    print(f"  Approx-Valley    | {rate:>6.2f}% ({time.time()-t0:.1f}s)")
+    results['Approx-Valley'] = rate
+
+    # --- Exact (Rosenberg) — n≤5만 실용적 ---
     gs_total, samples_total = 0, 0
     t0 = time.time()
     for run in range(num_runs):
@@ -256,24 +287,8 @@ def run_comparison(n_bits=5, num_runs=10, num_reads=100, num_sweeps=5000):
         gs_total += gs
         samples_total += reads
     rate = 100.0 * gs_total / samples_total if samples_total > 0 else 0
-    print(f"  TruthTable-Gap   | {rate:>6.2f}% ({time.time()-t0:.1f}s)")
-    results['TT-Gap'] = rate
-
-    # --- Truth Table: Multi-Valley ---
-    gs_total, samples_total = 0, 0
-    t0 = time.time()
-    for run in range(num_runs):
-        rng = np.random.default_rng(run)
-        t1 = ''.join([str(rng.integers(0, 2)) for _ in range(n_bits)])
-        t2 = ''.join([str(1 - int(c)) for c in t1])  # 반대 bitstring
-        tt = preset_multi_valley(n_bits, [t1, t2], gap=0.5, seed=run)
-        Q, info = create_qubo_truthtable(tt, verbose=False)
-        gs, reads, _ = run_sa_on_truthtable(Q, info, num_reads, num_sweeps)
-        gs_total += gs
-        samples_total += reads
-    rate = 100.0 * gs_total / samples_total if samples_total > 0 else 0
-    print(f"  TruthTable-Valley| {rate:>6.2f}% ({time.time()-t0:.1f}s)")
-    results['TT-Valley'] = rate
+    print(f"  Exact-Rosenberg  | {rate:>6.2f}% ({time.time()-t0:.1f}s)")
+    results['Exact'] = rate
 
     # --- 기존 방법론들 (n=8에서 실행 가능한 것만) ---
     try:

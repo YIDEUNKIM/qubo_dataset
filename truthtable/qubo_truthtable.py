@@ -343,7 +343,239 @@ def preset_multi_valley(n, targets, gap=0.5, barrier_height=5.0, seed=None):
 
 
 # ─────────────────────────────────────────────────
-#  메인 진입점
+#  근사 2차화 (Approximate Quadratization)
+# ─────────────────────────────────────────────────
+
+def create_qubo_approx(truth_table, n=None, epsilon=0.01, verbose=True):
+    """
+    근사 2차화: 보조변수 없는 n-변수 QUBO
+
+    진리표에 가장 가까운 2차 다항식을 찾되, ground state를 보장한다.
+      min_Q  Σ_x (E_Q(x) - E_truth(x))^2
+      s.t.   E_Q(target) + ε ≤ E_Q(x)  for all x ≠ target
+
+    보조변수 0개, QUBO 크기 = n, QP로 풀이.
+
+    Args:
+        truth_table: dict {bitstring: energy} / list / callable
+        n: 변수 개수
+        epsilon: ground state 에너지 갭 하한
+        verbose: 출력 여부
+
+    Returns:
+        Q: dict {(i,j): weight}
+        info: dict (메타데이터)
+    """
+    from scipy.optimize import minimize as scipy_minimize
+
+    if n is None:
+        if isinstance(truth_table, dict):
+            n = len(next(iter(truth_table.keys())))
+        elif isinstance(truth_table, (list, np.ndarray)):
+            n = int(np.log2(len(truth_table)))
+        else:
+            raise ValueError("함수 기반 입력 시 n을 명시해야 합니다")
+
+    def log(msg):
+        if verbose:
+            print(msg)
+
+    size = 1 << n
+    num_params = n * (n + 1) // 2
+
+    log(f"\n{'='*60}")
+    log(f" Approximate Quadratic QUBO Generator")
+    log(f"{'='*60}")
+    log(f" 변수 수: n = {n} (보조변수 0개)")
+    log(f" QUBO 파라미터: {num_params}개")
+    log(f" 제약조건: {size - 1}개")
+
+    # 파라미터 인덱스 매핑: (i,j) → q 벡터 인덱스
+    param_idx = {}
+    idx = 0
+    for i in range(n):
+        for j in range(i, n):
+            param_idx[(i, j)] = idx
+            idx += 1
+
+    # Feature matrix A와 에너지 벡터 구성
+    A = np.zeros((size, num_params))
+    e = np.zeros(size)
+    bitstrings = []
+    target_mask = None
+    min_energy = float('inf')
+
+    for mask in range(size):
+        x = [(mask >> i) & 1 for i in range(n)]
+        bs = ''.join(str(b) for b in x)
+        bitstrings.append(bs)
+
+        if isinstance(truth_table, dict):
+            e[mask] = truth_table[bs]
+        elif callable(truth_table):
+            e[mask] = truth_table(bs)
+        else:
+            e[mask] = truth_table[mask]
+
+        if e[mask] < min_energy - 1e-12:
+            min_energy = e[mask]
+            target_mask = mask
+
+        # Feature 채우기: x_i (대각), x_i·x_j (비대각)
+        for i in range(n):
+            if x[i]:
+                A[mask, param_idx[(i, i)]] = 1.0
+                for j in range(i + 1, n):
+                    if x[j]:
+                        A[mask, param_idx[(i, j)]] = 1.0
+
+    target = bitstrings[target_mask]
+    offset = float(e[target_mask])
+    e_adj = e - offset  # target 에너지 → 0
+
+    log(f" Target: {target} (energy = {offset:.4f})")
+
+    # Step 1: 무제약 최소제곱
+    log(f"\n[Step 1] 최소제곱 근사 (무제약)...")
+    q0, _, _, _ = np.linalg.lstsq(A, e_adj, rcond=None)
+
+    energies_ls = A @ q0
+    target_e_ls = energies_ls[target_mask]
+    gaps_ls = energies_ls - target_e_ls
+    gaps_ls[target_mask] = float('inf')
+    min_gap_ls = float(np.min(gaps_ls))
+
+    gs_ok = min_gap_ls >= epsilon
+    log(f"  최소 에너지 갭: {min_gap_ls:.6f}")
+    log(f"  Ground state {'보장됨' if gs_ok else '위반'}")
+
+    if gs_ok:
+        q = q0
+        log(f"  → 무제약 해 사용")
+    else:
+        # Step 2: 제약 QP (SLSQP)
+        n_violations = int(np.sum(gaps_ls < epsilon))
+        log(f"  위반 상태: {n_violations}개")
+        log(f"\n[Step 2] 제약 최적화 (SLSQP)...")
+
+        ATA = A.T @ A
+        ATe = A.T @ e_adj
+
+        def objective(q):
+            return 0.5 * q @ ATA @ q - ATe @ q
+
+        def gradient(q):
+            return ATA @ q - ATe
+
+        # Iterative Cutting Plane: 위반 제약만 추가하며 반복
+        a_target = A[target_mask]
+        q = q0.copy()
+
+        for iteration in range(50):
+            energies_cur = A @ q
+            target_e_cur = energies_cur[target_mask]
+            gaps_cur = energies_cur - target_e_cur
+
+            # 위반 상태 찾기 (gap < epsilon)
+            violated = []
+            for mask in range(size):
+                if mask == target_mask:
+                    continue
+                if gaps_cur[mask] < epsilon - 1e-10:
+                    violated.append(mask)
+
+            if not violated:
+                log(f"  수렴 (iteration {iteration + 1}, 위반 0개)")
+                break
+
+            # 위반 + 마진 부족 상태를 제약으로 추가
+            active = []
+            for mask in range(size):
+                if mask == target_mask:
+                    continue
+                if gaps_cur[mask] < epsilon * 2:
+                    active.append(mask)
+
+            C_active = A[active] - a_target
+
+            def constraint_fn(q, C=C_active):
+                return C @ q - epsilon
+
+            def constraint_jac(q, C=C_active):
+                return C
+
+            constraints = {'type': 'ineq', 'fun': constraint_fn,
+                           'jac': constraint_jac}
+
+            result = scipy_minimize(
+                objective, q, jac=gradient, method='SLSQP',
+                constraints=constraints,
+                options={'maxiter': 2000, 'ftol': 1e-14}
+            )
+            q = result.x
+
+            if len(violated) <= 3:
+                log(f"  iter {iteration + 1}: 위반 {len(violated)}개, "
+                    f"active {len(active)}개")
+        else:
+            log(f"  경고: {len(violated)}개 위반 잔존 (50회 반복 후)")
+
+    # Q dict 생성
+    Q = {}
+    for (i, j), pidx in param_idx.items():
+        if abs(q[pidx]) > 1e-15:
+            Q[(i, j)] = float(q[pidx])
+
+    # 검증
+    log(f"\n[Step 3] 검증...")
+    energies_final = A @ q
+    target_final = float(energies_final[target_mask])
+
+    gaps_final = energies_final - target_final
+    gaps_final[target_mask] = float('inf')
+    min_gap_final = float(np.min(gaps_final))
+    gs_verified = min_gap_final > 0
+
+    rmse = float(np.sqrt(np.mean((energies_final - e_adj) ** 2)))
+    max_err = float(np.max(np.abs(energies_final - e_adj)))
+
+    # 에너지 순서 보존율
+    order_preserved = 0
+    for i in range(size):
+        for j in range(i + 1, size):
+            if (e_adj[i] < e_adj[j]) == (energies_final[i] < energies_final[j]):
+                order_preserved += 1
+    total_pairs = size * (size - 1) // 2
+    order_rate = 100.0 * order_preserved / total_pairs if total_pairs > 0 else 100.0
+
+    log(f"  Ground state 보장: {'YES' if gs_verified else 'NO'}")
+    log(f"  에너지 갭: {min_gap_final:.6f}")
+    log(f"  RMSE: {rmse:.4f}")
+    log(f"  최대 오차: {max_err:.4f}")
+    log(f"  에너지 순서 보존율: {order_rate:.1f}%")
+    log(f"  Ground state: {target} (energy = {target_final + offset:.4f})")
+
+    info = {
+        'n_original': n,
+        'n_aux': 0,
+        'n_total': n,
+        'offset': offset,
+        'penalty_M': 0,
+        'ground_state': (target, target_final + offset),
+        'target': target,
+        'rmse': rmse,
+        'max_error': max_err,
+        'energy_gap': min_gap_final,
+        'order_preservation': order_rate,
+        'gs_verified': gs_verified,
+        'aux_info': [],
+    }
+
+    return Q, info
+
+
+# ─────────────────────────────────────────────────
+#  메인 진입점 (정확 / 근사)
 # ─────────────────────────────────────────────────
 
 def create_qubo_truthtable(truth_table, n=None, seed=None, verbose=True):
@@ -453,17 +685,23 @@ def main():
     results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
     os.makedirs(results_dir, exist_ok=True)
 
+    use_approx = '--approx' in sys.argv
+    if use_approx:
+        sys.argv.remove('--approx')
+
     if len(sys.argv) < 2 or sys.argv[1] == '--help':
         print("사용법:")
-        print("  python qubo_truthtable.py '{\"000\":3,...}'")
-        print("  python qubo_truthtable.py --preset gap N TARGET [--gap G] [--noise S] [--seed S]")
-        print("  python qubo_truthtable.py --preset valley N T1,T2,... [--gap G] [--barrier B] [--seed S]")
+        print("  python qubo_truthtable.py '{\"000\":3,...}' [--approx]")
+        print("  python qubo_truthtable.py --preset gap N TARGET [--gap G] [--approx] [--seed S]")
+        print("  python qubo_truthtable.py --preset valley N T1,T2,... [--approx] [--seed S]")
+        print()
+        print("  --approx: 근사 2차화 (보조변수 없음, ground state 보장)")
         print()
         print("예시:")
         tt = '{"000":3,"001":4,"010":4,"011":5,"100":3,"101":5,"110":2,"111":1}'
         print(f"  python qubo_truthtable.py '{tt}'")
-        print("  python qubo_truthtable.py --preset gap 8 10110011 --gap 2.0 --seed 42")
-        print("  python qubo_truthtable.py --preset valley 6 101010,010101 --seed 42")
+        print(f"  python qubo_truthtable.py '{tt}' --approx")
+        print("  python qubo_truthtable.py --preset gap 10 1011001100 --approx --seed 42")
         return
 
     def parse_opt(name, default):
@@ -498,7 +736,10 @@ def main():
         truth_table = json.loads(sys.argv[1])
         truth_table = {k: float(v) for k, v in truth_table.items()}
 
-    Q, info = create_qubo_truthtable(truth_table)
+    if use_approx:
+        Q, info = create_qubo_approx(truth_table)
+    else:
+        Q, info = create_qubo_truthtable(truth_table)
 
     n = info['n_original']
     total = info['n_total']
@@ -506,25 +747,34 @@ def main():
     print(f"\n{'='*60}")
     print(f" 결과 요약")
     print(f"{'='*60}")
+    print(f"  모드: {'근사 2차화' if use_approx else '정확 (Rosenberg)'}")
     print(f"  원래 변수: {n}")
     print(f"  보조 변수: {info['n_aux']}")
     print(f"  QUBO 크기: {total} x {total}")
-    print(f"  에너지 오프셋: {info['offset']:.4f}")
-    if info['n_aux'] > 0:
-        print(f"  패널티 M: {info['penalty_M']:.4f}")
+    if use_approx:
+        print(f"  RMSE: {info.get('rmse', 0):.4f}")
+        print(f"  에너지 갭: {info.get('energy_gap', 0):.6f}")
+        print(f"  순서 보존율: {info.get('order_preservation', 0):.1f}%")
+    else:
+        print(f"  에너지 오프셋: {info['offset']:.4f}")
+        if info['n_aux'] > 0:
+            print(f"  패널티 M: {info['penalty_M']:.4f}")
     print(f"  Ground state: {info['ground_state'][0]} (energy = {info['ground_state'][1]:.4f})")
 
     if total <= 10:
         print_q_matrix(Q, total)
         print_qubo_formula(Q)
 
-    # 저장: target에 보조변수 값도 포함
-    x_orig = [int(info['target'][i]) for i in range(n)]
-    x_full = compute_aux_values(x_orig, info['aux_info'])
-    full_target = ''.join(str(x_full[i]) for i in range(total))
+    # 저장
+    target_str = info['target']
+    if not use_approx:
+        x_orig = [int(target_str[i]) for i in range(n)]
+        x_full = compute_aux_values(x_orig, info['aux_info'])
+        target_str = ''.join(str(x_full[i]) for i in range(total))
 
-    filepath = os.path.join(results_dir, f"truthtable_n{n}_total{total}.csv")
-    save_qubo_edgelist(Q, filepath, full_target)
+    mode_tag = "approx" if use_approx else "exact"
+    filepath = os.path.join(results_dir, f"truthtable_{mode_tag}_n{n}_total{total}.csv")
+    save_qubo_edgelist(Q, filepath, target_str)
     print(f"\n  저장: {filepath}")
 
 
