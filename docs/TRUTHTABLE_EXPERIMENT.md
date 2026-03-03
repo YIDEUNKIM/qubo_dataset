@@ -124,9 +124,19 @@ truthtable/
 
 ## 실험 결과: 정확 모드 (Rosenberg)
 
-설정: n=5, instances=10, reads=100, sweeps=5000
-
 ### 실험 1: Energy Gap Sweep
+
+에너지 갭 크기별 SA 성공률. gap이 작을수록 ground state 찾기 어려움.
+
+```
+설정:
+  n = 5
+  instances = 10 (인스턴스당 랜덤 target 생성)
+  num_reads = 100 (SA 샘플 수/인스턴스)
+  num_sweeps = 5000
+  프리셋: preset_energy_gap(gap=각 값, noise_scale=1.0)
+  성공률 = GS 찾은 read 수 / 전체 read 수 (10 instances × 100 reads = 1000 samples)
+```
 
 ```
 Gap    | GS Rate  | Avg Hamming | QUBO 크기
@@ -141,6 +151,18 @@ Gap    | GS Rate  | Avg Hamming | QUBO 크기
 
 ### 실험 2: Multi-Valley Sweep
 
+Local minima 수 증가에 따른 SA 성공률 변화.
+
+```
+설정:
+  n = 5
+  instances = 10
+  num_reads = 100, num_sweeps = 5000
+  프리셋: preset_multi_valley(gap=0.5, barrier_height=5.0)
+  targets: 서로 Hamming 거리 ≥ n//3인 랜덤 bitstring
+  성공률 = GS 찾은 read 수 / 전체 read 수
+```
+
 ```
 Valleys | GS Rate  | Avg Hamming
 --------|----------|------------
@@ -151,6 +173,17 @@ Valleys | GS Rate  | Avg Hamming
 ```
 
 ### 실험 3: N-Scaling
+
+n 증가에 따른 QUBO 크기 폭발 및 SA 성공률 변화.
+
+```
+설정:
+  sizes = [3, 4, 5, 6, 7]
+  runs = 10 (각 n마다 랜덤 target 10회)
+  num_reads = 100, num_sweeps = 5000
+  프리셋: preset_energy_gap(gap=2.0, noise_scale=1.0)
+  성공률 = GS 찾은 read 수 / 전체 read 수
+```
 
 ```
 n  | QUBO 크기 | 보조변수 | SA 성공률
@@ -165,6 +198,16 @@ n  | QUBO 크기 | 보조변수 | SA 성공률
 ### 실험 4: 5-way 비교
 
 ```
+설정:
+  n = 5, runs = 10
+  num_reads = 100, num_sweeps = 5000
+  Truth Table: preset_energy_gap(gap=1.0)
+  성공률 기준 차이 주의:
+    - Exact-Rosenberg: GS 찾은 read 수 / 전체 read 수 (1000 samples)
+    - Wishart, ZeroExp, Posiform: best sample 기준 (10 runs 중 GS 찾은 run 수)
+```
+
+```
 방법론              | SA 성공률
 --------------------|----------
 Exact-Rosenberg     |  13.20%
@@ -177,9 +220,18 @@ Posiform            | 100.00%
 
 ## 실험 결과: 근사 모드 (QP)
 
-설정: n=5, instances=10, reads=100, sweeps=5000
-
 ### 실험 1: Energy Gap Sweep
+
+정확 모드와 동일 조건에서 근사 모드로 실행.
+
+```
+설정:
+  n = 5
+  instances = 10 (인스턴스당 랜덤 target 생성)
+  num_reads = 100, num_sweeps = 5000
+  프리셋: preset_energy_gap(gap=각 값, noise_scale=1.0)
+  성공률 = GS 찾은 read 수 / 전체 read 수 (1000 samples)
+```
 
 ```
 Gap    | GS Rate  | Avg Hamming | QUBO 크기
@@ -195,6 +247,15 @@ Gap    | GS Rate  | Avg Hamming | QUBO 크기
 ### 실험 2: Multi-Valley Sweep
 
 ```
+설정:
+  n = 5, instances = 10
+  num_reads = 100, num_sweeps = 5000
+  프리셋: preset_multi_valley(gap=0.5, barrier_height=5.0)
+  targets: 서로 Hamming 거리 ≥ n//3인 랜덤 bitstring
+  성공률 = GS 찾은 read 수 / 전체 read 수
+```
+
+```
 Valleys | GS Rate  | Avg Hamming
 --------|----------|------------
 1       |  59.60%  |  0.98
@@ -204,6 +265,14 @@ Valleys | GS Rate  | Avg Hamming
 ```
 
 ### 실험 3: N-Scaling
+
+```
+설정:
+  sizes = [3, 4, 5, 6, 7]
+  runs = 10, num_reads = 100, num_sweeps = 5000
+  프리셋: preset_energy_gap(gap=2.0, noise_scale=1.0)
+  성공률 = GS 찾은 read 수 / 전체 read 수
+```
 
 ```
 n  | QUBO 크기 | 보조변수 | SA 성공률
@@ -216,6 +285,18 @@ n  | QUBO 크기 | 보조변수 | SA 성공률
 ```
 
 ### 실험 4: 비교
+
+```
+설정:
+  n = 5, runs = 10
+  num_reads = 100, num_sweeps = 5000
+  Approx-Gap: preset_energy_gap(gap=1.0)
+  Approx-Valley: preset_multi_valley(gap=0.5, 2개 계곡)
+  Exact-Rosenberg: preset_energy_gap(gap=1.0)
+  성공률 기준 차이 주의:
+    - Approx-Gap/Valley, Exact-Rosenberg: GS 찾은 read 수 / 전체 read 수 (1000 samples)
+    - Wishart, ZeroExp, Posiform: best sample 기준 (10 runs 중 GS 찾은 run 수)
+```
 
 ```
 방법론              | SA 성공률
@@ -258,6 +339,15 @@ n | Exact (QUBO크기, SA)    | Approx (QUBO크기, SA)
 ```
 
 ### 대규모 근사 모드 테스트
+
+```
+설정:
+  별도 스크립트로 실행 (test_truthtable.py 외부)
+  각 n에 대해 단일 인스턴스 (랜덤 target)
+  프리셋: preset_energy_gap(gap=2.0, noise_scale=1.0)
+  num_reads = 100, num_sweeps = 5000
+  성공률 = GS 찾은 read 수 / 전체 read 수
+```
 
 ```
 n   | QUBO 크기 | SA 성공률 | 생성 시간 | GS 보장
