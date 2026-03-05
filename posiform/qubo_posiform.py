@@ -149,8 +149,9 @@ def solve_2sat(n, clauses):
             return None
 
     # 해 구성: Tarjan 역위상 순서 규약
-    # comp 번호가 작을수록 위상적으로 뒤 → comp[2*i] > comp[2*i+1]이면 x_i = True
-    solution = [comp[2 * i] > comp[2 * i + 1] for i in range(n)]
+    # comp 번호가 작을수록 위상적으로 뒤(sink 쪽)
+    # x_i = True when x_i가 ¬x_i보다 위상적으로 뒤 → comp[2*i] < comp[2*i+1]
+    solution = [comp[2 * i] < comp[2 * i + 1] for i in range(n)]
     return solution
 
 
@@ -182,18 +183,21 @@ def check_2sat_uniqueness(n, clauses, solution):
     return len(flippable) == 0, flippable
 
 
-def create_planted_2sat(target, max_clauses_factor=10, seed=None):
+def create_planted_2sat(target, max_clauses_factor=10, seed=None, targeted=True):
     """
     Target이 유일한 해인 planted 2-SAT 생성.
 
-    2단계 접근:
-      1. 랜덤 clause 추가 (대부분의 변수 고정)
-      2. Targeted 단계: 아직 flippable한 변수에 대해 집중 clause 추가
+    targeted=True (기본):
+      Phase 1 + Phase 2(flippable 변수 집중 공략)로 유일성 수렴 최적화.
+    targeted=False:
+      논문(Hahn+ 2023) 원본 알고리즘 재현. 균일 랜덤 clause만 추가하고
+      유일성이 확보될 때까지 반복. Clause 밀도 편향 없음.
 
     Args:
         target: 목표 비트스트링 (예: "10110")
         max_clauses_factor: 최대 clause 수 = factor * n
         seed: 난수 시드
+        targeted: True면 Phase 2(집중 공략) 사용, False면 균일 랜덤만
 
     Returns:
         clauses: [(lit1, lit2), ...] — lit = (var_idx, is_positive)
@@ -240,7 +244,12 @@ def create_planted_2sat(target, max_clauses_factor=10, seed=None):
             if is_unique:
                 return clauses, True
 
-    # --- Phase 2: Targeted clause 추가 ---
+    if not targeted:
+        # 논문 원본: Phase 2 없이 최종 확인만
+        is_unique, _ = check_2sat_uniqueness(n, clauses, target_sol)
+        return clauses, is_unique
+
+    # --- Phase 2: Targeted clause 추가 (targeted=True일 때만) ---
     # 아직 flippable한 변수에 대해 집중적으로 clause 추가
     is_unique, flippable = check_2sat_uniqueness(n, clauses, target_sol)
     if is_unique:
@@ -348,7 +357,8 @@ def posiform_to_qubo(n, clauses, coeff_range=(1.0, 3.0), seed=None):
     return Q, constant
 
 
-def create_qubo_posiform(target, coeff_range=(1.0, 3.0), max_clauses_factor=10, seed=None):
+def create_qubo_posiform(target, coeff_range=(1.0, 3.0), max_clauses_factor=10, seed=None,
+                         targeted=True):
     """
     Posiform Planting QUBO 생성 (메인 진입점).
 
@@ -360,6 +370,7 @@ def create_qubo_posiform(target, coeff_range=(1.0, 3.0), max_clauses_factor=10, 
         coeff_range: posiform 계수 범위 (lo, hi)
         max_clauses_factor: 최대 clause 수 = factor * n
         seed: 난수 시드
+        targeted: True면 Phase 2(집중 공략) 사용, False면 균일 랜덤만
 
     Returns:
         Q: QUBO 딕셔너리 {(i,j): weight} (i <= j)
@@ -377,7 +388,7 @@ def create_qubo_posiform(target, coeff_range=(1.0, 3.0), max_clauses_factor=10, 
 
     # planted 2-SAT 생성
     clauses, is_unique = create_planted_2sat(target, max_clauses_factor=max_clauses_factor,
-                                              seed=sat_seed)
+                                              seed=sat_seed, targeted=targeted)
 
     # posiform → QUBO 변환
     Q, constant = posiform_to_qubo(n, clauses, coeff_range=coeff_range, seed=coeff_seed)

@@ -52,6 +52,17 @@ qubo_dataset/
 │   ├── papers/                            ← 참고 논문 PDF
 │   └── results/                           ← 생성된 QUBO 파일
 │
+├── truthtable/                             ← Truth Table QUBO (Möbius + Rosenberg / 근사 QP)
+│   ├── qubo_truthtable.py                 ← 생성기 (정확: Möbius+Rosenberg / 근사: QP)
+│   ├── test_truthtable.py                 ← SA 실험 (gap sweep, valley, scaling, 전략 비교)
+│   ├── papers/                            ← 참고 논문 PDF
+│   └── results/                           ← 생성된 QUBO 파일
+│
+├── truthtable_concat/                      ← Truth Table Concat QUBO (block-diagonal 접합)
+│   ├── qubo_truthtable_concat.py          ← 생성기 (k-bit 블록 h개 접합)
+│   ├── test_truthtable_concat.py          ← SA 실험 (h-scaling, 8-way 비교)
+│   └── results/                           ← 생성된 QUBO 파일
+│
 └── mceliece/                               ← McEliece Cryptographic QUBO
     ├── qubo_mceliece.py                   ← 생성기 (Mandrà et al. 2024)
     ├── test_mceliece.py                   ← SA 실험 (m-scaling, t-sweep, sweep 전이, 6-way 비교)
@@ -98,6 +109,18 @@ qubo_dataset/
   - QUBO 크기: total_vars = k + num_aux (보조변수). m=4,t=2일 때 k=8, aux≈25~40
   - `create_qubo_mceliece(target, m, t, seed)`: 메인 진입점. Returns (Q, info)
   - `extract_original_solution(sample, k)`: SA 결과에서 원래 k개 변수 추출
+- **`truthtable/qubo_truthtable.py`** - **Truth Table QUBO generator.** 진리표(비트스트링 → 에너지) → Möbius 변환 → Rosenberg 차수축소 → QUBO. 정확 모드 + 근사 모드(QP). Key functions:
+  - `create_qubo_truthtable(truth_table, n, seed, verbose, reduce_strategy)`: 정확 모드 진입점. `reduce_strategy`: `'original'`(매번 새 aux) / `'cache'`(동일 쌍 재활용) / `'greedy'`(빈도 기반+재활용, 기본값)
+  - `create_qubo_approx(truth_table, n, epsilon)`: 근사 모드 (보조변수 0개, QP)
+  - `rosenberg_reduce(higher_order, n)`: 원래 차수축소 (매번 새 보조변수)
+  - `rosenberg_reduce_reuse(higher_order, n)`: 동일 쌍 product_cache 재활용
+  - `rosenberg_reduce_greedy(higher_order, n)`: 빈도 기반 탐욕적 쌍 선택 + 재활용. n=8 기준 aux 95.8% 절감 (522→22)
+  - `preset_random_landscape(n, target, seed)`: Random Landscape 프리셋 (E(target)=0, 나머지=uniform(0.1,5.0))
+  - `preset_multi_valley(n, targets, gap, barrier_height)`: Multi-Valley 프리셋
+- **`truthtable_concat/qubo_truthtable_concat.py`** - **Truth Table Concat QUBO generator.** k-bit Truth Table QUBO를 h개 생성하여 block-diagonal 접합. 총 변수 수 = k*h (approx) 또는 k*h + aux (exact). 각 블록 독립 → 전체 ground state = target 반복 h회 (유일성 보장). Key functions:
+  - `create_qubo_concat(target, h, mode, epsilon, reduce_strategy, seed)`: 메인 진입점
+  - `mode`: `'approx'` (보조변수 0, 기본값) / `'exact'` (Rosenberg)
+  - 블록별 다른 seed로 landscape 다양화, 동일 target 유지
 
 ### Analysis & Verification
 - **`zero_expectation/test_zero_expectation.py`** - SA scaling experiment for Zero-Expectation QUBO.
@@ -108,6 +131,8 @@ qubo_dataset/
 - **`posiform/test_posiform.py`** - SA experiment framework for Posiform Planting: N scaling, coefficient range sweep, 4-way comparison (Posiform vs Quiet vs Wishart vs ZeroExp).
 - **`hardened_posiform/test_posiform_hardened.py`** - SA experiment framework for Hardened Posiform: sweep transition (S-curve), N-scaling, hardened vs plain comparison.
 - **`mceliece/test_mceliece.py`** - SA experiment framework for McEliece Cryptographic QUBO: m-scaling (GF(2^m) 차수 vs 난이도), t-sweep (에러 정정 능력 vs 난이도), sweep transition (S-curve), 6-way comparison. 주의: m≥5는 Rosenberg 차수축소 비용으로 QUBO 생성이 매우 느림 → m=3,4로 제한.
+- **`truthtable/test_truthtable.py`** - SA experiment framework for Truth Table QUBO: gap sweep, valley sweep, N-scaling, 7-way comparison, 차수축소 전략 비교 (--strategy).
+- **`truthtable_concat/test_truthtable_concat.py`** - SA experiment framework for Truth Table Concat: h-scaling (k=7, h=1~20), 8-way comparison (Concat vs 기존 방법론).
 
 ### Data
 - **`<method>/results/`** - 각 방법론별 생성된 QUBO 파일. CSV edge-list 형식 (`# target,<bitstring>\ni,j,weight\n...`). 각 생성기가 자신의 `results/` 디렉토리에 자동 저장.
@@ -191,6 +216,35 @@ python3 mceliece/test_mceliece.py --sweep 10
 
 # Run 6-way comparison (McEliece vs Hardened vs Posiform vs Quiet vs Wishart vs ZeroExp)
 python3 mceliece/test_mceliece.py --compare 10
+
+# Generate Truth Table QUBO (exact mode, default greedy strategy)
+python3 truthtable/qubo_truthtable.py --preset random 8 10110011 --strategy greedy
+python3 truthtable/qubo_truthtable.py --preset random 8 10110011 --strategy original
+
+# Run Truth Table strategy comparison (original/cache/greedy)
+python3 truthtable/test_truthtable.py --strategy 5
+python3 truthtable/test_truthtable.py --strategy 5 3,4,5,6
+
+# Run Truth Table N-scaling
+python3 truthtable/test_truthtable.py --scaling 10
+
+# Run Truth Table greedy scaling (exact greedy vs approx)
+python3 truthtable/test_truthtable.py --greedy-scaling 100
+python3 truthtable/test_truthtable.py --greedy-scaling 100 3,4,5,6,7,8
+
+# Run Truth Table sweep transition (S-curve, n=8)
+python3 truthtable/test_truthtable.py --sweep 100
+
+# Generate Truth Table Concat QUBO (args: target h [옵션])
+python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10
+python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10 --exact
+python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10 --seed 42
+
+# Run Truth Table Concat h-scaling (args: --scaling [num_runs])
+python3 truthtable_concat/test_truthtable_concat.py --scaling 10
+
+# Run Truth Table Concat 8-way comparison (args: --compare [num_runs])
+python3 truthtable_concat/test_truthtable_concat.py --compare 10
 
 # Run Zero-Expectation SA scaling experiment
 python3 zero_expectation/test_zero_expectation.py 10,20,50,100 10

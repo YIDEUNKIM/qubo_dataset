@@ -1,10 +1,12 @@
 """
 Truth Table QUBO SA 실험 프레임워크
 
-실험 1: 에너지 갭 프리셋 — gap 크기별 SA 성공률 (gap ↓ = 난이도 ↑)
-실험 2: 다중 계곡 프리셋 — local minima 수 vs SA 성공률
-실험 3: N-Scaling — n 증가에 따른 QUBO 크기 / SA 성능 변화
-실험 4: 7-way 비교 — 기존 방법론과 SA 성공률 비교
+실험 1: 다중 계곡 프리셋 — local minima 수 vs SA 성공률
+실험 2: N-Scaling — n 증가에 따른 QUBO 크기 / SA 성능 변화
+실험 3: 7-way 비교 — 기존 방법론과 SA 성공률 비교
+실험 4: 차수축소 전략 비교 — original/cache/greedy
+실험 5: Greedy 확장 스케일링 — exact greedy vs approx
+실험 6: Sweep 전이 — S-curve
 """
 
 import random
@@ -18,8 +20,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from truthtable.qubo_truthtable import (
     create_qubo_truthtable, create_qubo_approx,
-    preset_energy_gap, preset_multi_valley,
-    compute_aux_values
+    preset_random_landscape, preset_multi_valley,
+    compute_aux_values,
+    rosenberg_reduce, rosenberg_reduce_reuse, rosenberg_reduce_greedy,
+    mobius_transform, classify_terms
 )
 from qubo_utils import calculate_energy
 
@@ -52,70 +56,7 @@ def run_sa_on_truthtable(Q, info, num_reads=50, num_sweeps=1000):
 
 
 # ─────────────────────────────────────────────────
-#  실험 1: 에너지 갭 프리셋 — gap sweep
-# ─────────────────────────────────────────────────
-
-def run_gap_sweep(n_bits=5, num_instances=20, num_reads=100, num_sweeps=5000):
-    """
-    에너지 갭 크기별 SA 성공률.
-    gap이 작을수록 ground state 찾기 어려움 (양자 어닐링 minimum gap과 직결).
-    """
-    gap_values = [0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
-
-    print("=" * 90)
-    print(f"실험 1: Energy Gap Sweep")
-    print(f"n={n_bits}, instances={num_instances}, reads={num_reads}, sweeps={num_sweeps}")
-    print("=" * 90)
-
-    all_results = []
-
-    for gap in gap_values:
-        gs_total = 0
-        samples_total = 0
-        hamming_total = 0
-        qubo_sizes = []
-
-        t0 = time.time()
-        for run in range(num_instances):
-            target = ''.join([str(random.randint(0, 1)) for _ in range(n_bits)])
-            tt = preset_energy_gap(n_bits, target, gap=gap, noise_scale=1.0, seed=run)
-            Q, info = create_qubo_truthtable(tt, verbose=False)
-            qubo_sizes.append(info['n_total'])
-
-            gs, reads, avg_h = run_sa_on_truthtable(
-                Q, info, num_reads=num_reads, num_sweeps=num_sweeps)
-            gs_total += gs
-            samples_total += reads
-            hamming_total += avg_h
-
-        elapsed = time.time() - t0
-        rate = 100.0 * gs_total / samples_total if samples_total > 0 else 0
-        avg_hamming = hamming_total / num_instances
-        avg_size = np.mean(qubo_sizes)
-
-        print(f"  gap={gap:<5} | GS rate: {gs_total:>4}/{samples_total} "
-              f"({rate:>6.2f}%) | avg Hamming: {avg_hamming:>5.2f} | "
-              f"QUBO size: {avg_size:.0f} | time: {elapsed:.1f}s")
-
-        all_results.append({
-            'gap': gap, 'gs_rate': rate, 'avg_hamming': avg_hamming,
-            'avg_qubo_size': avg_size,
-        })
-
-    # 요약
-    print(f"\n{'='*60}")
-    print("Gap Sweep 요약")
-    print(f"{'='*60}")
-    print(f"{'Gap':>8} | {'GS Rate':>10} | {'Avg Hamming':>12}")
-    print("-" * 36)
-    for r in all_results:
-        print(f"{r['gap']:>8.1f} | {r['gs_rate']:>9.2f}% | {r['avg_hamming']:>12.2f}")
-
-    return all_results
-
-
-# ─────────────────────────────────────────────────
-#  실험 2: 다중 계곡 프리셋 — local minima 수 sweep
+#  실험 1: 다중 계곡 프리셋 — local minima 수 sweep
 # ─────────────────────────────────────────────────
 
 def run_valley_sweep(n_bits=5, num_instances=20, num_reads=100, num_sweeps=5000):
@@ -188,7 +129,7 @@ def run_scaling(sizes=None, num_runs=10, num_reads=100, num_sweeps=5000):
         sizes = [3, 4, 5, 6, 7]
 
     print("=" * 90)
-    print(f"실험 3: N-Scaling (gap=2.0)")
+    print(f"실험 2: N-Scaling (random landscape)")
     print(f"Sizes={sizes}, runs={num_runs}, reads={num_reads}, sweeps={num_sweeps}")
     print("=" * 90)
 
@@ -203,7 +144,7 @@ def run_scaling(sizes=None, num_runs=10, num_reads=100, num_sweeps=5000):
         t0 = time.time()
         for run in range(num_runs):
             target = ''.join([str(random.randint(0, 1)) for _ in range(n)])
-            tt = preset_energy_gap(n, target, gap=2.0, noise_scale=1.0, seed=run)
+            tt = preset_random_landscape(n, target, seed=run)
             Q, info = create_qubo_truthtable(tt, verbose=False)
             qubo_sizes.append(info['n_total'])
             aux_counts.append(info['n_aux'])
@@ -235,30 +176,30 @@ def run_scaling(sizes=None, num_runs=10, num_reads=100, num_sweeps=5000):
 
 def run_comparison(n_bits=5, num_runs=10, num_reads=100, num_sweeps=5000):
     """
-    Truth Table (gap, valley) vs 기존 6개 방법론 SA 성공률 비교.
-    n이 작아야 truth table 방법이 동작하므로 n=8 기준.
+    Truth Table (random, valley) vs 기존 방법론 SA 성공률 비교.
+    n이 작아야 truth table 방법이 동작하므로 n=5 기준.
     """
     print("=" * 90)
-    print(f"실험 4: 7-way 비교 (n={n_bits})")
+    print(f"실험 3: 7-way 비교 (n={n_bits})")
     print(f"runs={num_runs}, reads={num_reads}, sweeps={num_sweeps}")
     print("=" * 90)
 
     sampler = neal.SimulatedAnnealingSampler()
     results = {}
 
-    # --- Approx: Energy Gap ---
+    # --- Approx: Random Landscape ---
     gs_total, samples_total = 0, 0
     t0 = time.time()
     for run in range(num_runs):
         target = ''.join([str(random.randint(0, 1)) for _ in range(n_bits)])
-        tt = preset_energy_gap(n_bits, target, gap=1.0, seed=run)
+        tt = preset_random_landscape(n_bits, target, seed=run)
         Q, info = create_qubo_approx(tt, verbose=False)
         gs, reads, _ = run_sa_on_truthtable(Q, info, num_reads, num_sweeps)
         gs_total += gs
         samples_total += reads
     rate = 100.0 * gs_total / samples_total if samples_total > 0 else 0
-    print(f"  Approx-Gap       | {rate:>6.2f}% ({time.time()-t0:.1f}s)")
-    results['Approx-Gap'] = rate
+    print(f"  Approx-Random    | {rate:>6.2f}% ({time.time()-t0:.1f}s)")
+    results['Approx-Random'] = rate
 
     # --- Approx: Multi-Valley ---
     gs_total, samples_total = 0, 0
@@ -281,7 +222,7 @@ def run_comparison(n_bits=5, num_runs=10, num_reads=100, num_sweeps=5000):
     t0 = time.time()
     for run in range(num_runs):
         target = ''.join([str(random.randint(0, 1)) for _ in range(n_bits)])
-        tt = preset_energy_gap(n_bits, target, gap=1.0, seed=run)
+        tt = preset_random_landscape(n_bits, target, seed=run)
         Q, info = create_qubo_truthtable(tt, verbose=False)
         gs, reads, _ = run_sa_on_truthtable(Q, info, num_reads, num_sweeps)
         gs_total += gs
@@ -360,6 +301,253 @@ def run_comparison(n_bits=5, num_runs=10, num_reads=100, num_sweeps=5000):
 
 
 # ─────────────────────────────────────────────────
+#  실험 4: 차수축소 전략 비교
+# ─────────────────────────────────────────────────
+
+def run_strategy_comparison(sizes=None, num_runs=5, num_reads=100, num_sweeps=5000):
+    """
+    3가지 Rosenberg 차수축소 전략 비교:
+      original — 매번 새 보조변수
+      cache    — 동일 쌍 재활용
+      greedy   — 빈도 기반 쌍 선택 + 재활용
+
+    각 전략별 보조변수 수, QUBO 크기, SA 성공률, 생성 시간 측정.
+    """
+    if sizes is None:
+        sizes = [3, 4, 5, 6, 7, 8, 9]
+
+    strategies = ['original', 'cache', 'greedy']
+
+    print("=" * 100)
+    print(f"실험 4: Rosenberg 차수축소 전략 비교")
+    print(f"Sizes={sizes}, runs={num_runs}, reads={num_reads}, sweeps={num_sweeps}")
+    print("=" * 100)
+
+    all_results = []
+
+    for n in sizes:
+        print(f"\n--- n = {n} ---")
+        row = {'n': n}
+
+        for strategy in strategies:
+            aux_counts = []
+            qubo_sizes = []
+            gs_total = 0
+            samples_total = 0
+            gen_times = []
+
+            for run in range(num_runs):
+                target = ''.join([str(random.randint(0, 1)) for _ in range(n)])
+                tt = preset_random_landscape(n, target, seed=run)
+
+                t0 = time.time()
+                Q, info = create_qubo_truthtable(
+                    tt, verbose=False, reduce_strategy=strategy)
+                gen_time = time.time() - t0
+                gen_times.append(gen_time)
+
+                aux_counts.append(info['n_aux'])
+                qubo_sizes.append(info['n_total'])
+
+                gs, reads, _ = run_sa_on_truthtable(
+                    Q, info, num_reads=num_reads, num_sweeps=num_sweeps)
+                gs_total += gs
+                samples_total += reads
+
+            rate = 100.0 * gs_total / samples_total if samples_total > 0 else 0
+            avg_aux = np.mean(aux_counts)
+            avg_size = np.mean(qubo_sizes)
+            avg_gen = np.mean(gen_times)
+
+            print(f"  {strategy:<8} | aux={avg_aux:>7.0f} | QUBO={avg_size:>7.0f} | "
+                  f"GS rate: {rate:>6.2f}% | gen: {avg_gen:.3f}s")
+
+            row[f'{strategy}_aux'] = avg_aux
+            row[f'{strategy}_qubo'] = avg_size
+            row[f'{strategy}_rate'] = rate
+            row[f'{strategy}_gen'] = avg_gen
+
+        all_results.append(row)
+
+    # 요약 표
+    print(f"\n{'='*100}")
+    print("전략 비교 요약 — 보조변수 수")
+    print(f"{'='*100}")
+    print(f"{'n':>3} | {'original':>10} | {'cache':>10} | {'greedy':>10} | {'greedy 절감률':>14}")
+    print("-" * 60)
+    for r in all_results:
+        orig = r.get('original_aux', 0)
+        greedy = r.get('greedy_aux', 0)
+        saving = 100.0 * (1 - greedy / orig) if orig > 0 else 0
+        print(f"{r['n']:>3} | {orig:>10.0f} | {r.get('cache_aux', 0):>10.0f} | "
+              f"{greedy:>10.0f} | {saving:>13.1f}%")
+
+    print(f"\n전략 비교 요약 — SA 성공률")
+    print(f"{'='*100}")
+    print(f"{'n':>3} | {'original':>10} | {'cache':>10} | {'greedy':>10}")
+    print("-" * 45)
+    for r in all_results:
+        print(f"{r['n']:>3} | {r.get('original_rate', 0):>9.2f}% | "
+              f"{r.get('cache_rate', 0):>9.2f}% | {r.get('greedy_rate', 0):>9.2f}%")
+
+    return all_results
+
+
+# ─────────────────────────────────────────────────
+#  실험 5: Greedy 확장 스케일링 (exact greedy vs approx)
+# ─────────────────────────────────────────────────
+
+def run_greedy_scaling(sizes=None, num_runs=100, num_reads=100, num_sweeps=5000):
+    """
+    Greedy 전략으로 정확 모드의 실용 한계 확장 측정.
+    같은 n에서 approx 모드도 실행하여 1:1 비교.
+    """
+    if sizes is None:
+        sizes = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+    print("=" * 100, flush=True)
+    print(f"실험 5: Greedy 확장 스케일링 (exact greedy vs approx)", flush=True)
+    print(f"Sizes={sizes}, runs={num_runs}, reads={num_reads}, sweeps={num_sweeps}", flush=True)
+    print("=" * 100, flush=True)
+
+    all_results = []
+
+    for n in sizes:
+        print(f"\n--- n = {n} ---", flush=True)
+        row = {'n': n}
+
+        for mode in ['greedy', 'approx']:
+            qubo_sizes = []
+            aux_counts = []
+            gs_total = 0
+            samples_total = 0
+            gen_times = []
+
+            for run in range(num_runs):
+                target = ''.join([str(random.randint(0, 1)) for _ in range(n)])
+                tt = preset_random_landscape(n, target, seed=run)
+
+                t0 = time.time()
+                if mode == 'greedy':
+                    Q, info = create_qubo_truthtable(
+                        tt, verbose=False, reduce_strategy='greedy')
+                else:
+                    Q, info = create_qubo_approx(tt, verbose=False)
+                gen_time = time.time() - t0
+                gen_times.append(gen_time)
+
+                qubo_sizes.append(info['n_total'])
+                aux_counts.append(info['n_aux'])
+
+                gs, reads, _ = run_sa_on_truthtable(
+                    Q, info, num_reads=num_reads, num_sweeps=num_sweeps)
+                gs_total += gs
+                samples_total += reads
+
+            rate = 100.0 * gs_total / samples_total if samples_total > 0 else 0
+            avg_size = np.mean(qubo_sizes)
+            avg_aux = np.mean(aux_counts)
+            avg_gen = np.mean(gen_times)
+
+            print(f"  {mode:<8} | QUBO={avg_size:>7.0f} (aux={avg_aux:>6.0f}) | "
+                  f"GS rate: {rate:>6.2f}% | gen: {avg_gen:.3f}s", flush=True)
+
+            row[f'{mode}_qubo'] = avg_size
+            row[f'{mode}_aux'] = avg_aux
+            row[f'{mode}_rate'] = rate
+            row[f'{mode}_gen'] = avg_gen
+
+        all_results.append(row)
+
+    # 요약 표
+    print(f"\n{'='*100}")
+    print("Greedy 확장 스케일링 요약")
+    print(f"{'='*100}")
+    print(f"{'n':>3} | {'Greedy QUBO':>12} | {'Greedy Rate':>12} | "
+          f"{'Approx QUBO':>12} | {'Approx Rate':>12} | {'Greedy Gen':>10} | {'Approx Gen':>10}")
+    print("-" * 85)
+    for r in all_results:
+        print(f"{r['n']:>3} | {r.get('greedy_qubo', 0):>12.0f} | "
+              f"{r.get('greedy_rate', 0):>11.2f}% | "
+              f"{r.get('approx_qubo', 0):>12.0f} | "
+              f"{r.get('approx_rate', 0):>11.2f}% | "
+              f"{r.get('greedy_gen', 0):>9.3f}s | "
+              f"{r.get('approx_gen', 0):>9.3f}s")
+
+    return all_results
+
+
+# ─────────────────────────────────────────────────
+#  실험 6: Sweep 전이 (S-curve)
+# ─────────────────────────────────────────────────
+
+def run_sweep_transition(n=8, num_instances=100, num_reads=100):
+    """
+    Greedy로 축소된 QUBO의 SA hardness 특성 분석.
+    sweep 수를 변화시키며 SA 성공률의 S-curve 전이 측정.
+    """
+    sweep_values = [50, 100, 200, 500, 1000, 2000, 5000, 10000]
+
+    print("=" * 100)
+    print(f"실험 6: Sweep 전이 (S-curve)")
+    print(f"n={n}, instances={num_instances}, reads={num_reads}")
+    print(f"sweeps={sweep_values}")
+    print("=" * 100)
+
+    # 인스턴스 사전 생성 (모든 sweep 값에 동일 인스턴스 사용)
+    print(f"\n[1] QUBO 인스턴스 {num_instances}개 사전 생성 (greedy)...")
+    instances = []
+    qubo_sizes = []
+    t0 = time.time()
+    for run in range(num_instances):
+        target = ''.join([str(random.randint(0, 1)) for _ in range(n)])
+        tt = preset_random_landscape(n, target, seed=run)
+        Q, info = create_qubo_truthtable(tt, verbose=False, reduce_strategy='greedy')
+        instances.append((Q, info))
+        qubo_sizes.append(info['n_total'])
+    gen_time = time.time() - t0
+    print(f"  생성 완료: avg QUBO size={np.mean(qubo_sizes):.0f}, time={gen_time:.1f}s")
+
+    # sweep별 SA 실행
+    print(f"\n[2] Sweep별 SA 실행...")
+    all_results = []
+
+    for sweeps in sweep_values:
+        gs_total = 0
+        samples_total = 0
+
+        t0 = time.time()
+        for Q, info in instances:
+            gs, reads, _ = run_sa_on_truthtable(
+                Q, info, num_reads=num_reads, num_sweeps=sweeps)
+            gs_total += gs
+            samples_total += reads
+
+        elapsed = time.time() - t0
+        rate = 100.0 * gs_total / samples_total if samples_total > 0 else 0
+
+        print(f"  sweeps={sweeps:>6} | GS rate: {gs_total:>5}/{samples_total} "
+              f"({rate:>6.2f}%) | time: {elapsed:.1f}s")
+
+        all_results.append({
+            'sweeps': sweeps, 'gs_rate': rate,
+            'gs_found': gs_total, 'samples': samples_total,
+        })
+
+    # 요약
+    print(f"\n{'='*60}")
+    print(f"Sweep 전이 요약 (n={n}, greedy)")
+    print(f"{'='*60}")
+    print(f"{'Sweeps':>8} | {'GS Rate':>10}")
+    print("-" * 22)
+    for r in all_results:
+        bar = '#' * int(r['gs_rate'] / 2)
+        print(f"{r['sweeps']:>8} | {r['gs_rate']:>9.2f}% | {bar}")
+
+    return all_results
+
+
+# ─────────────────────────────────────────────────
 #  CLI
 # ─────────────────────────────────────────────────
 
@@ -369,23 +557,44 @@ def main():
 
     if len(sys.argv) < 2:
         print("사용법:")
-        print("  python test_truthtable.py --gap [num_instances]")
         print("  python test_truthtable.py --valley [num_instances]")
         print("  python test_truthtable.py --scaling [num_runs]")
         print("  python test_truthtable.py --compare [num_runs]")
+        print("  python test_truthtable.py --strategy [num_runs] [sizes]")
+        print("  python test_truthtable.py --greedy-scaling [num_runs] [sizes]")
+        print("  python test_truthtable.py --sweep [num_instances]")
+        print()
+        print("  --strategy: 3가지 Rosenberg 전략 비교 (original/cache/greedy)")
+        print("    예: --strategy 5          (n=3..9, 5 runs)")
+        print("    예: --strategy 5 3,4,5,6  (n=3..6, 5 runs)")
+        print("  --greedy-scaling: greedy 확장 스케일링 (exact greedy vs approx)")
+        print("    예: --greedy-scaling 100              (n=3..12, 100 runs)")
+        print("    예: --greedy-scaling 100 3,4,5,6,7,8  (n=3..8, 100 runs)")
+        print("  --sweep: sweep 전이 S-curve (n=8, greedy)")
+        print("    예: --sweep 100  (100 instances)")
         return
 
     mode = sys.argv[1]
     count = int(sys.argv[2]) if len(sys.argv) > 2 else 10
 
-    if mode == '--gap':
-        run_gap_sweep(n_bits=5, num_instances=count)
-    elif mode == '--valley':
+    if mode == '--valley':
         run_valley_sweep(n_bits=5, num_instances=count)
     elif mode == '--scaling':
         run_scaling(num_runs=count)
     elif mode == '--compare':
         run_comparison(n_bits=5, num_runs=count)
+    elif mode == '--strategy':
+        sizes = None
+        if len(sys.argv) > 3:
+            sizes = [int(x) for x in sys.argv[3].split(',')]
+        run_strategy_comparison(sizes=sizes, num_runs=count)
+    elif mode == '--greedy-scaling':
+        sizes = None
+        if len(sys.argv) > 3:
+            sizes = [int(x) for x in sys.argv[3].split(',')]
+        run_greedy_scaling(sizes=sizes, num_runs=count)
+    elif mode == '--sweep':
+        run_sweep_transition(n=8, num_instances=count)
     else:
         print(f"알 수 없는 모드: {mode}")
 

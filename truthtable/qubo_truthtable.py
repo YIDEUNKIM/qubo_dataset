@@ -161,16 +161,147 @@ def rosenberg_reduce(higher_order, n):
     return reduced_linear, reduced_quadratic, next_aux - n, aux_info
 
 
+def rosenberg_reduce_reuse(higher_order, n):
+    """
+    고차항을 Rosenberg 체이닝으로 2차화 (보조변수 재활용)
+
+    동일한 곱 y = x_a · x_b가 여러 항에 등장하면 보조변수를 재활용.
+    패널티는 고유 보조변수당 1번만 추가.
+
+    Returns:
+        reduced_linear:    dict {var: coeff}
+        reduced_quadratic: dict {(i,j): coeff}
+        aux_count:         보조변수 수
+        aux_info:          list of (aux_idx, var_a, var_b)
+    """
+    reduced_linear = {}
+    reduced_quadratic = {}
+    aux_info = []
+    next_aux = n
+    product_cache = {}  # {(a, b): y_idx}
+
+    pending = [(frozenset(vs), c) for vs, c in higher_order.items()]
+
+    while pending:
+        new_pending = []
+        for variables, coeff in pending:
+            var_list = sorted(variables)
+            degree = len(var_list)
+
+            if degree == 1:
+                reduced_linear[var_list[0]] = reduced_linear.get(var_list[0], 0) + coeff
+            elif degree == 2:
+                key = (var_list[0], var_list[1])
+                reduced_quadratic[key] = reduced_quadratic.get(key, 0) + coeff
+            else:
+                a, b = var_list[0], var_list[1]
+                pair = (a, b)  # 이미 sorted
+
+                if pair in product_cache:
+                    y = product_cache[pair]
+                else:
+                    y = next_aux
+                    next_aux += 1
+                    product_cache[pair] = y
+                    aux_info.append((y, a, b))
+
+                remaining = frozenset(var_list[2:]) | frozenset([y])
+                new_pending.append((remaining, coeff))
+
+        pending = new_pending
+
+    return reduced_linear, reduced_quadratic, next_aux - n, aux_info
+
+
+def rosenberg_reduce_greedy(higher_order, n):
+    """
+    고차항을 Rosenberg 차수축소 (빈도 기반 탐욕적 쌍 선택 + 보조변수 재활용)
+
+    매 라운드 전체 pending 항에서 가장 빈번한 쌍을 찾아 먼저 축소.
+    sorted 첫 두 변수 대신 빈도 기반 선택 → 재활용 극대화.
+
+    Returns:
+        reduced_linear:    dict {var: coeff}
+        reduced_quadratic: dict {(i,j): coeff}
+        aux_count:         보조변수 수
+        aux_info:          list of (aux_idx, var_a, var_b)
+    """
+    reduced_linear = {}
+    reduced_quadratic = {}
+    aux_info = []
+    next_aux = n
+    product_cache = {}  # {(a, b): y_idx}
+
+    pending = [(frozenset(vs), c) for vs, c in higher_order.items()]
+
+    while True:
+        # degree ≤ 2인 항 분리
+        still_pending = []
+        for variables, coeff in pending:
+            degree = len(variables)
+            if degree == 1:
+                (var,) = variables
+                reduced_linear[var] = reduced_linear.get(var, 0) + coeff
+            elif degree == 2:
+                i, j = sorted(variables)
+                reduced_quadratic[(i, j)] = reduced_quadratic.get((i, j), 0) + coeff
+            else:
+                still_pending.append((variables, coeff))
+
+        if not still_pending:
+            break
+
+        # 전체 pending 고차항에서 쌍 빈도 계산
+        pair_freq = {}
+        for variables, coeff in still_pending:
+            var_list = sorted(variables)
+            for i in range(len(var_list)):
+                for j in range(i + 1, len(var_list)):
+                    pair = (var_list[i], var_list[j])
+                    pair_freq[pair] = pair_freq.get(pair, 0) + 1
+
+        # 가장 빈번한 쌍 선택
+        best_pair = max(pair_freq, key=pair_freq.get)
+        a, b = best_pair
+
+        # 보조변수 재활용 또는 생성
+        if best_pair in product_cache:
+            y = product_cache[best_pair]
+        else:
+            y = next_aux
+            next_aux += 1
+            product_cache[best_pair] = y
+            aux_info.append((y, a, b))
+
+        # best_pair를 포함하는 항만 치환, 나머지는 그대로
+        new_pending = []
+        for variables, coeff in still_pending:
+            if a in variables and b in variables:
+                remaining = (variables - {a, b}) | {y}
+                new_pending.append((remaining, coeff))
+            else:
+                new_pending.append((variables, coeff))
+
+        pending = new_pending
+
+    return reduced_linear, reduced_quadratic, next_aux - n, aux_info
+
+
 # ─────────────────────────────────────────────────
 #  Step 4: 패널티 강도 결정
 # ─────────────────────────────────────────────────
 
-def compute_penalty_strength(truth_table, n):
+def compute_penalty_strength(truth_table, n, reduced_linear=None,
+                              reduced_quadratic=None, aux_info=None):
     """
     최소 패널티 강도 M 계산
 
-    M > max(E) - min(E) 이면 보조변수 위반 시 에너지가
-    항상 정상 상태보다 높아짐 → ground state 보장
+    두 가지 조건을 모두 만족해야 함:
+      1. M > max(E) - min(E): 진리표 에너지 범위 초과
+      2. M > max_y S_y: 각 보조변수 y에 관련된 축소 항 |계수| 합 초과
+
+    조건 2가 없으면 보조변수 위반이 에너지적으로 유리해져서
+    SA가 패널티 위반 상태에 갇힘.
     """
     if isinstance(truth_table, dict):
         energies = list(truth_table.values())
@@ -182,7 +313,30 @@ def compute_penalty_strength(truth_table, n):
     else:
         energies = list(truth_table)
 
-    return float(max(energies) - min(energies) + 1.0)
+    tt_range = float(max(energies) - min(energies))
+
+    # 축소 항 기반 M 하한 계산
+    max_aux_coeff = 0.0
+    if aux_info and (reduced_linear or reduced_quadratic):
+        aux_vars = set(y for (y, a, b) in aux_info)
+        aux_coeff_sum = {y: 0.0 for y in aux_vars}
+
+        if reduced_linear:
+            for var, coeff in reduced_linear.items():
+                if var in aux_vars:
+                    aux_coeff_sum[var] += abs(coeff)
+
+        if reduced_quadratic:
+            for (i, j), coeff in reduced_quadratic.items():
+                if i in aux_vars:
+                    aux_coeff_sum[i] += abs(coeff)
+                if j in aux_vars:
+                    aux_coeff_sum[j] += abs(coeff)
+
+        if aux_coeff_sum:
+            max_aux_coeff = max(aux_coeff_sum.values())
+
+    return max(tt_range, max_aux_coeff) + 1.0
 
 
 # ─────────────────────────────────────────────────
@@ -290,14 +444,14 @@ def verify_qubo(Q, truth_table, n, aux_info, offset):
 #  에너지 함수 프리셋
 # ─────────────────────────────────────────────────
 
-def preset_energy_gap(n, target, gap=2.0, noise_scale=1.0, seed=None):
+def preset_random_landscape(n, target, seed=None):
     """
-    프리셋: 에너지 갭 제어
+    프리셋: 랜덤 에너지 랜드스케이프
 
     E(target) = 0
-    E(x ≠ target) = gap + |N(0, noise_scale)|
+    E(x ≠ target) = uniform(0.1, 5.0)
 
-    gap이 작을수록 난이도 ↑ (양자 어닐링의 minimum spectral gap과 직결)
+    target이 유일한 ground state이고, 나머지는 골고루 분포.
     """
     rng = np.random.default_rng(seed)
     truth_table = {}
@@ -307,7 +461,7 @@ def preset_energy_gap(n, target, gap=2.0, noise_scale=1.0, seed=None):
         if bitstring == target:
             truth_table[bitstring] = 0.0
         else:
-            truth_table[bitstring] = gap + abs(rng.normal(0, noise_scale))
+            truth_table[bitstring] = rng.uniform(0.1, 5.0)
 
     return truth_table
 
@@ -578,7 +732,8 @@ def create_qubo_approx(truth_table, n=None, epsilon=0.01, verbose=True):
 #  메인 진입점 (정확 / 근사)
 # ─────────────────────────────────────────────────
 
-def create_qubo_truthtable(truth_table, n=None, seed=None, verbose=True):
+def create_qubo_truthtable(truth_table, n=None, seed=None, verbose=True,
+                           reduce_strategy='greedy'):
     """
     진리표로부터 QUBO 생성
 
@@ -586,6 +741,7 @@ def create_qubo_truthtable(truth_table, n=None, seed=None, verbose=True):
         truth_table: dict {bitstring: energy} / list / callable
         n: 변수 개수 (dict일 때 자동 추론)
         verbose: 진행 상황 출력 여부
+        reduce_strategy: 'original' / 'cache' / 'greedy' (기본값: 'greedy')
 
     Returns:
         Q: dict {(i,j): weight}
@@ -627,18 +783,26 @@ def create_qubo_truthtable(truth_table, n=None, seed=None, verbose=True):
 
     # Step 3
     if higher_order:
-        log(f"\n[Step 3] Rosenberg 차수축소...")
+        reduce_fn = {
+            'original': rosenberg_reduce,
+            'cache': rosenberg_reduce_reuse,
+            'greedy': rosenberg_reduce_greedy,
+        }.get(reduce_strategy, rosenberg_reduce_greedy)
+        log(f"\n[Step 3] Rosenberg 차수축소 (전략: {reduce_strategy})...")
         reduced_linear, reduced_quadratic, aux_count, aux_info = \
-            rosenberg_reduce(higher_order, n)
+            reduce_fn(higher_order, n)
         log(f"  보조변수: {aux_count}개")
     else:
         reduced_linear, reduced_quadratic, aux_count, aux_info = {}, {}, 0, []
         log(f"\n[Step 3] 고차항 없음 — 차수축소 불필요")
 
     # Step 4
-    M = compute_penalty_strength(truth_table, n) if aux_count > 0 else 0
     if aux_count > 0:
+        M = compute_penalty_strength(truth_table, n,
+                                     reduced_linear, reduced_quadratic, aux_info)
         log(f"\n[Step 4] 패널티 강도: M = {M:.4f}")
+    else:
+        M = 0
 
     # Step 5
     log(f"\n[Step 5] QUBO 조립...")
@@ -673,6 +837,7 @@ def create_qubo_truthtable(truth_table, n=None, seed=None, verbose=True):
         'n_higher_order': len(higher_order),
         'aux_info': aux_info,
         'target': ground_state[0],
+        'reduce_strategy': reduce_strategy,
     }
     return Q, info
 
@@ -689,19 +854,29 @@ def main():
     if use_approx:
         sys.argv.remove('--approx')
 
+    # --strategy 파싱
+    reduce_strategy = 'greedy'
+    if '--strategy' in sys.argv:
+        idx = sys.argv.index('--strategy')
+        reduce_strategy = sys.argv[idx + 1]
+        sys.argv.pop(idx + 1)
+        sys.argv.pop(idx)
+
     if len(sys.argv) < 2 or sys.argv[1] == '--help':
         print("사용법:")
-        print("  python qubo_truthtable.py '{\"000\":3,...}' [--approx]")
-        print("  python qubo_truthtable.py --preset gap N TARGET [--gap G] [--approx] [--seed S]")
-        print("  python qubo_truthtable.py --preset valley N T1,T2,... [--approx] [--seed S]")
+        print("  python qubo_truthtable.py '{\"000\":3,...}' [--approx] [--strategy S]")
+        print("  python qubo_truthtable.py --preset random N TARGET [--approx] [--strategy S] [--seed S]")
+        print("  python qubo_truthtable.py --preset valley N T1,T2,... [--approx] [--strategy S] [--seed S]")
         print()
         print("  --approx: 근사 2차화 (보조변수 없음, ground state 보장)")
+        print("  --strategy: Rosenberg 차수축소 전략 (original/cache/greedy, 기본값: greedy)")
         print()
         print("예시:")
         tt = '{"000":3,"001":4,"010":4,"011":5,"100":3,"101":5,"110":2,"111":1}'
         print(f"  python qubo_truthtable.py '{tt}'")
         print(f"  python qubo_truthtable.py '{tt}' --approx")
-        print("  python qubo_truthtable.py --preset gap 10 1011001100 --approx --seed 42")
+        print("  python qubo_truthtable.py --preset random 10 1011001100 --approx --seed 42")
+        print("  python qubo_truthtable.py --preset random 8 10110011 --strategy greedy")
         return
 
     def parse_opt(name, default):
@@ -713,13 +888,11 @@ def main():
         preset_name = sys.argv[2]
         seed = int(parse_opt('--seed', 0)) if '--seed' in sys.argv else None
 
-        if preset_name == 'gap':
+        if preset_name == 'random':
             n = int(sys.argv[3])
             target = sys.argv[4]
-            gap = parse_opt('--gap', 2.0)
-            noise = parse_opt('--noise', 1.0)
-            print(f"프리셋: Energy Gap (n={n}, target={target}, gap={gap}, noise={noise})")
-            truth_table = preset_energy_gap(n, target, gap=gap, noise_scale=noise, seed=seed)
+            print(f"프리셋: Random Landscape (n={n}, target={target})")
+            truth_table = preset_random_landscape(n, target, seed=seed)
 
         elif preset_name == 'valley':
             n = int(sys.argv[3])
@@ -739,7 +912,7 @@ def main():
     if use_approx:
         Q, info = create_qubo_approx(truth_table)
     else:
-        Q, info = create_qubo_truthtable(truth_table)
+        Q, info = create_qubo_truthtable(truth_table, reduce_strategy=reduce_strategy)
 
     n = info['n_original']
     total = info['n_total']
@@ -747,7 +920,8 @@ def main():
     print(f"\n{'='*60}")
     print(f" 결과 요약")
     print(f"{'='*60}")
-    print(f"  모드: {'근사 2차화' if use_approx else '정확 (Rosenberg)'}")
+    strategy_label = f"정확 (Rosenberg, {reduce_strategy})" if not use_approx else "근사 2차화"
+    print(f"  모드: {strategy_label}")
     print(f"  원래 변수: {n}")
     print(f"  보조 변수: {info['n_aux']}")
     print(f"  QUBO 크기: {total} x {total}")

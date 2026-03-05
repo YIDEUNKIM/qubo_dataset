@@ -36,7 +36,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from qubo_utils import calculate_energy, save_qubo_edgelist, print_q_matrix, print_qubo_formula
 from posiform.qubo_posiform import create_qubo_posiform
 
-
 # ============================================================
 # Discrete Coefficient Sets (논문 Section 2.1)
 # ============================================================
@@ -82,6 +81,7 @@ def generate_random_qubo(variables, coeff_type='lin2', seed=None):
     Returns:
         Q: QUBO 딕셔너리 {(i,j): weight} (i <= j)
     """
+
     rng = random.Random(seed)
     coeffs = COEFF_LIN2 if coeff_type == 'lin2' else COEFF_LIN20
 
@@ -215,22 +215,26 @@ def create_qubo_hardened_posiform(n, max_subgraph_size=15, coeff_type='lin2',
     target = ''.join(map(str, target_bits))
 
     # Step 5: Posiform planted QUBO 생성
+    # 논문(Hahn+ 2023) 원본 알고리즘: 균일 랜덤 clause만 사용 (targeted=False)
     posiform_seed = rng.randint(0, 10**9)
     Q_posiform, posiform_info = create_qubo_posiform(
         target,
         coeff_range=posiform_coeff_range,
-        seed=posiform_seed
+        max_clauses_factor=20,
+        seed=posiform_seed,
+        targeted=False
     )
 
     if not posiform_info['is_unique']:
-        # 재시도 (다른 시드)
+        # 재시도 (다른 시드, 더 많은 clause)
         for retry in range(5):
             posiform_seed = rng.randint(0, 10**9)
             Q_posiform, posiform_info = create_qubo_posiform(
                 target,
                 coeff_range=posiform_coeff_range,
-                max_clauses_factor=20,
-                seed=posiform_seed
+                max_clauses_factor=30,
+                seed=posiform_seed,
+                targeted=False
             )
             if posiform_info['is_unique']:
                 break
