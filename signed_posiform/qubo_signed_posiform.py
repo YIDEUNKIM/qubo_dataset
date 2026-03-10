@@ -80,15 +80,92 @@ def _add_posiform_term(Q, i, j, wi, wj, b):
     return constant
 
 
-def _precompute_bits(n):
-    """각 변수의 비트값 배열 사전 계산. Returns: list of np.array, each shape (2^n,)"""
+def _compute_energies_chunked(Q, n, constant, chunk_bits=22):
+    """
+    Q로부터 모든 2^n 상태의 에너지를 chunk 기반으로 계산.
+    메모리 효율: chunk 단위로 bit 배열 생성 → 전체 n개 bit 배열을 동시에 올리지 않음.
+    """
     size = 1 << n
-    masks = np.arange(size, dtype=np.int64)
-    return [(masks >> bit) & 1 for bit in range(n)]
+    energies = np.full(size, constant, dtype=np.float64)
+    chunk_size = min(size, 1 << chunk_bits)
+    q_items = list(Q.items())
+
+    for start in range(0, size, chunk_size):
+        end = min(start + chunk_size, size)
+        masks_chunk = np.arange(start, end, dtype=np.int32)
+        # chunk 내 모든 bit 배열 계산 (chunk_size × n bytes)
+        bits_chunk = [((masks_chunk >> bit) & 1).astype(np.int8) for bit in range(n)]
+
+        for (i, j), w in q_items:
+            if i == j:
+                energies[start:end] += w * bits_chunk[i]
+            else:
+                energies[start:end] += w * bits_chunk[i] * bits_chunk[j]
+
+        del bits_chunk, masks_chunk
+
+    return energies
 
 
-def _compute_energies_vectorized(Q, n, constant, bits):
-    """Q로부터 모든 2^n 상태의 에너지를 벡터화 계산."""
+def _posiform_energy_delta_chunked(n, i, j, wi, wj, b, energies, chunk_bits=22):
+    """posiform term 추가 시 에너지 증분 업데이트. chunk 기반."""
+    size = 1 << n
+    chunk_size = min(size, 1 << chunk_bits)
+
+    for start in range(0, size, chunk_size):
+        end = min(start + chunk_size, size)
+        masks_chunk = np.arange(start, end, dtype=np.int32)
+        xi = ((masks_chunk >> i) & 1).astype(np.int8)
+        xj = ((masks_chunk >> j) & 1).astype(np.int8)
+
+        if wi == 0 and wj == 0:
+            delta = b * (1 - xi) * (1 - xj)
+        elif wi == 0 and wj == 1:
+            delta = b * (1 - xi) * xj
+        elif wi == 1 and wj == 0:
+            delta = b * xi * (1 - xj)
+        else:
+            delta = b * xi * xj
+
+        energies[start:end] += delta
+
+
+def _compute_gap_chunked(energies, n, target_mask, var_i, var_j, wrong_i, wrong_j,
+                          chunk_bits=22):
+    """
+    wrong tuple 부분공간 최솟값과 target 에너지 차이(gap) 계산. chunk 기반.
+    """
+    target_energy = energies[target_mask]
+    min_in_subspace = np.float64('inf')
+    size = 1 << n
+    chunk_size = min(size, 1 << chunk_bits)
+
+    for start in range(0, size, chunk_size):
+        end = min(start + chunk_size, size)
+        masks_chunk = np.arange(start, end, dtype=np.int32)
+        xi = (masks_chunk >> var_i) & 1
+        xj = (masks_chunk >> var_j) & 1
+        mask = (xi == wrong_i) & (xj == wrong_j)
+        sub = energies[start:end][mask]
+        if len(sub) > 0:
+            chunk_min = np.min(sub)
+            if chunk_min < min_in_subspace:
+                min_in_subspace = chunk_min
+
+    return min_in_subspace - target_energy
+
+
+# ── n이 작을 때 빠른 전체 배열 버전 (n ≤ 23) ──
+
+def _precompute_bits(n):
+    """각 변수의 비트값 배열 사전 계산."""
+    size = 1 << n
+    masks = np.arange(size, dtype=np.int32)
+    return [((masks >> bit) & 1).astype(np.int8) for bit in range(n)]
+
+
+def _compute_energies_full(Q, n, constant, bits):
+    """Q로부터 모든 2^n 상태의 에너지를 전체 배열로 계산."""
     size = 1 << n
     energies = np.full(size, constant, dtype=np.float64)
     for (i, j), w in Q.items():
@@ -99,30 +176,23 @@ def _compute_energies_vectorized(Q, n, constant, bits):
     return energies
 
 
-def _posiform_energy_delta(n, i, j, wi, wj, b, bits):
-    """posiform term 추가 시 각 상태의 에너지 변화량 계산. O(2^n) vectorized."""
+def _posiform_energy_delta_full(n, i, j, wi, wj, b, energies, bits):
+    """posiform term 추가 시 에너지 증분 업데이트. 전체 배열 버전."""
     xi = bits[i]
     xj = bits[j]
     if wi == 0 and wj == 0:
-        return b * (1 - xi) * (1 - xj)
+        energies += b * (1 - xi) * (1 - xj)
     elif wi == 0 and wj == 1:
-        return b * (1 - xi) * xj
+        energies += b * (1 - xi) * xj
     elif wi == 1 and wj == 0:
-        return b * xi * (1 - xj)
+        energies += b * xi * (1 - xj)
     else:
-        return b * xi * xj
+        energies += b * xi * xj
 
 
-def _compute_gap(energies, target_mask, var_i, var_j, wrong_i, wrong_j, bits):
-    """
-    wrong tuple (var_i=wrong_i, var_j=wrong_j)로 고정된 부분공간에서의 최솟값과
-    target 에너지의 차이(gap)를 계산. numpy 벡터화.
-
-    Returns:
-        gap: X - Y (>= 0). 음수 weight의 절대값 상한.
-    """
+def _compute_gap_full(energies, target_mask, var_i, var_j, wrong_i, wrong_j, bits):
+    """부분공간 gap 계산. 전체 배열 버전."""
     target_energy = energies[target_mask]
-    # 부분공간 마스크: xi == wrong_i AND xj == wrong_j
     subspace_mask = (bits[var_i] == wrong_i) & (bits[var_j] == wrong_j)
     min_in_subspace = np.min(energies[subspace_mask])
     return min_in_subspace - target_energy
@@ -188,9 +258,6 @@ def create_qubo_signed_posiform(target, coeff_range=(1.0, 3.0),
 
     log(f"[분할] Phase 1 (양수): {n_positive}절, Phase 2 (음수): {n_negative}절")
 
-    # ── 비트 배열 사전 계산 (벡터화용) ──
-    bits = _precompute_bits(n)
-
     # ── Phase 1: 양수 weight ──
     Q = {}
     constant = 0.0
@@ -211,32 +278,58 @@ def create_qubo_signed_posiform(target, coeff_range=(1.0, 3.0),
     # ── Phase 2: 음수 weight (gap 기반) ──
     negative_weights = []
     skipped = 0
+    use_chunked = n > 23  # n>23: chunk 기반 (메모리 절약), n≤23: 전체 배열 (빠름)
 
     if n_negative > 0:
-        # Phase 1 후 에너지 벡터화 계산 (1회)
-        energies = _compute_energies_vectorized(Q, n, constant, bits)
+        if use_chunked:
+            # chunk 기반: 메모리 O(2^n * 8) + O(2^chunk_bits * n)
+            energies = _compute_energies_chunked(Q, n, constant)
 
-        for idx in negative_indices:
-            clause = clauses[idx]
-            i, j, wi, wj = _clause_to_wrong_tuple(clause)
+            for idx in negative_indices:
+                clause = clauses[idx]
+                i, j, wi, wj = _clause_to_wrong_tuple(clause)
 
-            # gap 계산 (벡터화)
-            gap = _compute_gap(energies, target_mask, i, j, wi, wj, bits)
+                gap = _compute_gap_chunked(energies, n, target_mask,
+                                           i, j, wi, wj)
 
-            if gap <= margin:
-                lo, hi = coeff_range
-                b = rng_coeff.uniform(lo, hi)
-                constant += _add_posiform_term(Q, i, j, wi, wj, b)
-                positive_weights.append(b)
-                skipped += 1
-            else:
-                max_neg = gap * (1.0 - margin)
-                b = -rng_coeff.uniform(margin, max_neg)
-                constant += _add_posiform_term(Q, i, j, wi, wj, b)
-                negative_weights.append(b)
+                if gap <= margin:
+                    lo, hi = coeff_range
+                    b = rng_coeff.uniform(lo, hi)
+                    constant += _add_posiform_term(Q, i, j, wi, wj, b)
+                    positive_weights.append(b)
+                    skipped += 1
+                else:
+                    max_neg = gap * (1.0 - margin)
+                    b = -rng_coeff.uniform(margin, max_neg)
+                    constant += _add_posiform_term(Q, i, j, wi, wj, b)
+                    negative_weights.append(b)
 
-            # 증분 에너지 업데이트 (O(2^n), Q 순회 없음)
-            energies += _posiform_energy_delta(n, i, j, wi, wj, b, bits)
+                _posiform_energy_delta_chunked(n, i, j, wi, wj, b, energies)
+        else:
+            # 전체 배열: 빠르지만 메모리 O(2^n * n)
+            bits = _precompute_bits(n)
+            energies = _compute_energies_full(Q, n, constant, bits)
+
+            for idx in negative_indices:
+                clause = clauses[idx]
+                i, j, wi, wj = _clause_to_wrong_tuple(clause)
+
+                gap = _compute_gap_full(energies, target_mask,
+                                        i, j, wi, wj, bits)
+
+                if gap <= margin:
+                    lo, hi = coeff_range
+                    b = rng_coeff.uniform(lo, hi)
+                    constant += _add_posiform_term(Q, i, j, wi, wj, b)
+                    positive_weights.append(b)
+                    skipped += 1
+                else:
+                    max_neg = gap * (1.0 - margin)
+                    b = -rng_coeff.uniform(margin, max_neg)
+                    constant += _add_posiform_term(Q, i, j, wi, wj, b)
+                    negative_weights.append(b)
+
+                _posiform_energy_delta_full(n, i, j, wi, wj, b, energies, bits)
 
     # 0에 가까운 항 제거
     Q = {k: v for k, v in Q.items() if abs(v) > 1e-15}
@@ -249,7 +342,12 @@ def create_qubo_signed_posiform(target, coeff_range=(1.0, 3.0),
         log(f"  gap 부족으로 양수 전환: {skipped}개")
 
     # ── 검증 ──
-    final_energies = _compute_energies_vectorized(Q, n, constant, bits)
+    if use_chunked:
+        final_energies = _compute_energies_chunked(Q, n, constant)
+    else:
+        if 'bits' not in dir():
+            bits = _precompute_bits(n)
+        final_energies = _compute_energies_full(Q, n, constant, bits)
     target_energy = final_energies[target_mask]
     final_energies[target_mask] = float('inf')
     min_other = np.min(final_energies)
