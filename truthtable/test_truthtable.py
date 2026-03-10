@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from truthtable.qubo_truthtable import (
     create_qubo_truthtable, create_qubo_approx,
+    create_qubo_approx_optimized,
     preset_random_landscape, preset_multi_valley,
     compute_aux_values,
     rosenberg_reduce, rosenberg_reduce_reuse, rosenberg_reduce_greedy,
@@ -432,7 +433,7 @@ def run_greedy_scaling(sizes=None, num_runs=100, num_reads=100, num_sweeps=5000)
                     Q, info = create_qubo_truthtable(
                         tt, verbose=False, reduce_strategy='greedy')
                 else:
-                    Q, info = create_qubo_approx(tt, verbose=False)
+                    Q, info = create_qubo_approx_optimized(tt, verbose=False)
                 gen_time = time.time() - t0
                 gen_times.append(gen_time)
 

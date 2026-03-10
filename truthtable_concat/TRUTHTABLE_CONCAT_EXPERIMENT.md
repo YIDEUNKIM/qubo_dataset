@@ -13,190 +13,210 @@ Truth Table QUBO는 진리표(2^n 비트스트링 → 에너지)로부터 임의
 
 즉, 단일 블록으로는 **최대 12변수**까지만 생성할 수 있다.
 
-### 아이디어: Block-Diagonal 접합
+### 아이디어: Block-Diagonal 접합 + Posiform Hardening
 
-동일한 k-bit target을 가진 Truth Table QUBO를 h개 독립적으로 생성하여 block-diagonal로 접합하면:
+k-bit Truth Table QUBO를 h개 독립적으로 생성하여 block-diagonal로 접합:
 
 ```
-Q_total = diag(Q_1, Q_2, ..., Q_h)
+Q_concat = diag(Q_1, Q_2, ..., Q_h)
 ```
 
-- 총 변수 수: k × h (approx) 또는 k × h + aux (exact)
-- 각 블록은 독립 → 전체 ground state = target 반복 h회
-- 블록별 다른 seed → 다른 에너지 landscape, 동일 target
-- **유일성 보장**: 각 블록의 ground state가 유일하면 전체도 유일
+선택적으로 posiform hardening을 적용하여 cross-block coupling 추가:
 
-이를 통해 k ≤ 12인 Truth Table의 제약을 우회하여 **임의 크기의 QUBO**를 생성할 수 있다.
+```
+Q_final = Q_concat + α × Q_posiform
+```
+
+- 총 변수 수: k × h (approx/random) 또는 k × h + aux (exact)
+- **α=0 (posiform 없음)**: 모든 블록이 동일 target → 전체 target = target 반복 h회
+- **α>0 (posiform hardening)**: 블록별 랜덤 target → 반복 패턴 없음, posiform이 전체 ground state 보장
+- 블록별 다른 seed → 다른 에너지 landscape
+- **유일성 보장**: 각 블록의 ground state가 유일 + posiform이 target에서 유일 최소 → 전체도 유일
+- **Posiform hardening**: α > 0이면 블록 간 결합이 생겨 block-diagonal 분해 불가능
 
 ---
 
 ## 2. 알고리즘
 
-### 2.1 블록 생성
+### 2.1 Landscape 모드
 
-각 블록 i (i = 0, 1, ..., h-1):
+#### Planted (기본)
+- 블록별 target을 심은 진리표 → QUBO
+- E(target) = 0, E(x ≠ target) = uniform(0.1, 5.0)
+- 에너지 bowl 구조 → SA-easy per block
 
-1. `preset_energy_gap(k, target, gap, noise_scale, seed=seed+i)` → 진리표 생성
-   - E(target) = 0
-   - E(x ≠ target) = gap + \|N(0, noise_scale)\|
-2. Approx 모드: `create_qubo_approx(tt)` → k변수 QUBO (보조변수 0)
-3. Exact 모드: `create_qubo_truthtable(tt)` → (k + aux)변수 QUBO
+#### Random
+- 블록별 무작위 진리표 → unconstrained QP fit → QUBO
+- 에너지가 0 중심 uniform(-5, 5)으로 모든 상태에 대해 랜덤
+- Target은 brute force로 발견 (심지 않음)
+- Genuine local minima (QP fit 잔차로 인한 복합 landscape)
+- **Posiform hardening 필수** (블록이 target을 보장하지 않으므로)
 
-### 2.2 Block-Diagonal 조립
+### 2.2 블록 Target 결정
 
-블록 i의 모든 변수 인덱스에 offset을 더하여 전역 인덱스로 변환:
+- **planted, α=0**: 모든 블록이 사용자 지정 target → `full_target = target * h` (반복)
+- **planted, α>0**: 블록별 랜덤 k-bit target 생성 (seed+7777 기반 RNG)
+- **random**: 블록별 QP fit 후 brute force GS 탐색 → target 자동 결정
 
-```
-블록 0: 변수 [0, 1, ..., k-1]
-블록 1: 변수 [k, k+1, ..., 2k-1]
-...
-블록 h-1: 변수 [(h-1)k, ..., hk-1]
-```
+### 2.3 블록 생성
 
-Q_total의 비영 항은 각 블록 내부에만 존재하므로 블록 간 결합은 없다.
+**Planted**:
+1. `preset_random_landscape(k, block_target_i, seed=seed+i)` → 진리표 생성
+2. Approx: `create_qubo_approx(tt)` → k변수 QUBO (보조변수 0)
+3. Exact: `create_qubo_truthtable(tt, reduce_strategy='greedy')` → (k + aux)변수 QUBO
 
-### 2.3 Ground State 유일성
+**Random**:
+1. `create_random_block_qubo(k, energy_range, seed=seed+i)` → QUBO + GS
+2. Random truth table → unconstrained lstsq (상수항 포함) → QUBO
+3. 보조변수 0개
 
-- Approx 모드: QP 제약으로 E_Q(target) + ε ≤ E_Q(x) 보장 → 각 블록에서 target이 유일 ground state
-- Exact 모드: Möbius 변환이 진리표를 정확히 재현 → gap > 0이므로 target이 유일 ground state
-- 독립 블록의 직합: 모든 블록에서 유일 → 전체 Q_total에서도 유일
+### 2.4 Block-Diagonal 조립
+
+블록 i의 모든 변수 인덱스에 offset을 더하여 전역 인덱스로 변환.
+
+### 2.5 Posiform Hardening (planted: 선택, random: 필수)
+
+α > 0이면 전체 target(k×h bits)으로 posiform planted QUBO를 생성하여 결합:
+- `Q_final = Q_concat + α × Q_posiform`
+- Random landscape: `targeted=True` (강한 유일성 필요)
+- Planted landscape: `targeted=False` (블록이 이미 target 보장)
 
 ---
 
 ## 3. 실험 결과
 
-### 3.1 실험 1: h-Scaling (Approx vs Exact)
+### 3.0 실험 0: Ground State 검증 (Random Landscape)
 
-블록 수(h) 증가에 따른 SA 성공률 변화. 블록 크기 k=7 고정. Approx와 Exact 모드 비교.
+Random landscape + posiform hardening에서 brute force로 GS 유일성 검증 (n ≤ 21).
 
-**설정**:
+**설정**: 20 instances per config
 
-| 파라미터 | 값 |
-|----------|-----|
-| k (블록 크기) | 7 |
-| h (블록 수) | 1, 2, 5, 10, 20 |
-| mode | approx / exact |
-| gap | 2.0 |
-| noise_scale | 1.0 |
-| instances | 100 |
-| num_reads | 100 |
-| num_sweeps | 1000 |
+| n | k | h | α | GS 일치 | GS 유일 | avg gap | avg LM |
+|---|---|---|---|---------|---------|---------|--------|
+| 7 | 7 | 1 | 0.01 | **20/20** | **20/20** | 0.3453 | 3.5 |
+| 7 | 7 | 1 | 0.1 | **20/20** | **20/20** | 0.6251 | 3.5 |
+| 14 | 7 | 2 | 0.01 | **20/20** | **20/20** | 0.2000 | 6.9 |
+| 14 | 7 | 2 | 0.1 | **20/20** | **20/20** | 0.5264 | 6.9 |
+| 21 | 7 | 3 | 0.01 | **20/20** | **20/20** | 0.1768 | 10.4 |
+| 21 | 7 | 3 | 0.1 | **20/20** | **20/20** | 0.5010 | 10.4 |
 
-#### Approx 모드 결과
+**관찰**: 모든 config에서 100% GS 일치 + 유일성. α 증가 시 energy gap 증가 (posiform 기여). 블록당 평균 ~3.5개 local minima (k=7 → 2^7=128 상태 중).
 
-| h | N (총 변수) | QUBO 크기 | GS Rate | Avg Hamming |
-|---|------------|-----------|---------|-------------|
-| 1 | 7 | 7 | **58.08%** | 1.62 |
-| 2 | 14 | 14 | **30.27%** | 3.56 |
-| 5 | 35 | 35 | **9.73%** | 8.79 |
-| 10 | 70 | 70 | **4.97%** | 16.73 |
-| 20 | 140 | 140 | **5.85%** | 33.04 |
+### 3.1 실험 1: h-Scaling (6 Configs)
 
-#### Exact 모드 결과
+블록 수(h) 증가에 따른 SA 성공률. k=7 고정, 6 configs.
 
-| h | N (총 변수) | QUBO 크기 | GS Rate | Avg Hamming |
-|---|------------|-----------|---------|-------------|
-| 1 | 7 | 22 | **6.86%** | 3.37 |
-| 2 | 14 | 44 | **0.54%** | 6.61 |
-| 5 | 35 | 110 | **0.00%** | 16.24 |
-| 10 | 70 | 220 | **0.00%** | 33.17 |
-| 20 | 140 | 440 | **0.00%** | 68.27 |
+**설정**: 10 instances, 100 reads, 1000 sweeps
 
-#### Approx vs Exact 비교
-
-| h | N | Approx QUBO | Approx GS Rate | Exact QUBO | Exact GS Rate | QUBO 팽창률 |
-|---|---|-------------|----------------|------------|---------------|------------|
-| 1 | 7 | 7 | **58.08%** | 22 | **6.86%** | ×3.1 |
-| 2 | 14 | 14 | **30.27%** | 44 | **0.54%** | ×3.1 |
-| 5 | 35 | 35 | **9.73%** | 110 | **0.00%** | ×3.1 |
-| 10 | 70 | 70 | **4.97%** | 220 | **0.00%** | ×3.1 |
-| 20 | 140 | 140 | **5.85%** | 440 | **0.00%** | ×3.1 |
+| h | N | Approx | Approx(α=0.01) | Random(α=0.01) | Random(α=0.1) | Greedy | Greedy(α=0.01) |
+|---|---|--------|----------------|----------------|---------------|--------|----------------|
+| 1 | 7 | **63.00%** | **74.00%** | **87.60%** | **96.60%** | **2.50%** | **5.20%** |
+| 2 | 14 | **41.00%** | **53.40%** | **73.90%** | **95.20%** | **0.20%** | **0.40%** |
+| 5 | 35 | **21.50%** | **24.30%** | **55.90%** | **99.30%** | **0.00%** | **0.00%** |
+| 10 | 70 | **14.60%** | **8.90%** | **44.90%** | **100.00%** | **0.00%** | **0.00%** |
+| 20 | 140 | **6.90%** | **1.40%** | **17.60%** | **98.10%** | **0.00%** | **0.00%** |
 
 **관찰**:
 
-1. **Exact 모드의 보조변수 비용**: k=7에서 블록당 보조변수 15개 → QUBO 크기 22 (×3.1 팽창). 이 비용이 h에 비례하여 누적됨.
-2. **Approx 성공률 감소**: h 증가에 따라 58% → 30% → 10% → 5%로 단조 감소. h=10→20에서 소폭 반등(4.97→5.85%)은 통계 노이즈.
-3. **Exact는 h=1에서부터 난이도 높음**: 단일 블록도 22변수 QUBO가 되어 sweeps=1000에서 6.86%만 성공. h≥5에서 완전 0%.
-4. **Exact Avg Hamming ≈ Approx의 2배**: Exact h=1에서 3.37 vs Approx 1.62. 보조변수 탐색 공간이 SA를 정답 근처에서도 멀어지게 함.
-5. **Hamming distance 선형 증가**: 두 모드 모두 블록이 독립적이므로 Avg Hamming이 h에 비례. Approx 블록당 ~1.65, Exact 블록당 ~3.4.
-6. **이론 vs 실측 (Approx)**: 단일 블록 성공률 p ≈ 0.58일 때, p^5 = 6.9% (실측 9.73%), p^10 = 0.5% (실측 4.97%). 실측이 이론보다 높은 이유는 SA가 block-diagonal 구조를 부분적으로 활용하기 때문으로 추정.
-7. **결론**: Approx 모드가 Concat QUBO에 압도적으로 유리. Exact 모드는 보조변수 비용으로 실용성이 없음.
+1. **Random(α=0.1) SA-easy**: h=10에서 100%, h=20에서도 98.1%. Posiform 신호가 강하면 random landscape의 얕은 local minima를 쉽게 극복.
+2. **Random(α=0.01) > Planted(α=0.01)**: 모든 h에서 Random이 우수 (h=5: 55.9% vs 24.3%). Random landscape의 QP fit 잔차가 planted의 sharp bowl보다 SA-friendly.
+3. **Planted Approx(α=0.01) 역전**: h≤5에서는 bare보다 우수, h≥10에서 역전 (h=10: 8.9% vs 14.6%). 랜덤 target 복잡도.
+4. **Greedy 전멸**: h≥2에서 0%. 보조변수 ×3.1 팽창이 지배적.
 
-### 3.2 실험 2: Hardened vs Concat 비교
+### 3.2 실험 2: 14-way 비교
 
-동일 변수 수(N≈35)에서 Concat과 Hardened Posiform의 SA 난이도 비교.
+동일 변수 수(N=35)에서 Concat-Approx / Concat-Greedy / Random / Hardened Posiform 비교.
 
-**설정**:
+**설정**: k=7, h=5, 10 instances, 100 reads, 1000 sweeps
 
-| 파라미터 | 값 |
-|----------|-----|
-| N | ≈35 |
-| Concat | k=7, h=5 |
-| Hardened | lin2, α=0.1 |
-| instances | 100 |
-| num_reads | 100 |
-| num_sweeps | 1000 |
-
-**결과**:
-
-| 방법론 | GS Rate | 소요 시간 |
-|--------|---------|-----------|
-| Concat-Exact | **0.00%** | 8.4s |
-| Concat-Approx | **15.99%** | 47.0s |
-| Hardened (lin2, α=0.1) | **100.00%** | 9.8s |
+| Method | GS Rate | Count | QUBO | Time |
+|--------|---------|-------|------|------|
+| Concat-Greedy | **0.00%** | 0/1000 | 110 | 0.8s |
+| Concat-Greedy(α=0.001) | **0.00%** | 0/1000 | 110 | 1.2s |
+| Concat-Greedy(α=0.01) | **0.00%** | 0/1000 | 110 | 1.3s |
+| Concat-Greedy(α=0.1) | **0.00%** | 0/1000 | 110 | 1.3s |
+| Concat-Approx(α=0.001) | **10.90%** | 109/1000 | 35 | 13.4s |
+| Concat-Approx | **20.90%** | 209/1000 | 35 | 13.1s |
+| Concat-Approx(α=0.01) | **23.30%** | 233/1000 | 35 | 12.5s |
+| Random(α=0.001) | **39.20%** | 392/1000 | 35 | 0.7s |
+| Random(α=0.01) | **56.60%** | 566/1000 | 35 | 0.7s |
+| Hardened(α=0.001) | **81.80%** | 818/1000 | 35 | 0.8s |
+| Hardened(α=0.01) | **84.70%** | 847/1000 | 35 | 0.9s |
+| Concat-Approx(α=0.1) | **98.10%** | 981/1000 | 35 | 13.3s |
+| Random(α=0.1) | **98.70%** | 987/1000 | 35 | 0.7s |
+| Hardened(α=0.1) | **99.70%** | 997/1000 | 35 | 0.9s |
 
 **분석**:
 
-1. **Hardened가 N=35에서 SA-easy**: lin2, α=0.1이라도 N=35는 Hardened의 상전이 크기(N≈500)보다 훨씬 작아 SA가 쉽게 풀어냄. SA sweeps=1000으로도 100% 성공.
-2. **Concat-Approx가 더 어려움**: 같은 N=35에서 Concat-Approx는 15.99%만 성공. 블록 독립성에도 불구하고, 5개 블록이 모두 동시에 맞아야 하므로 난이도가 높음.
-3. **Concat-Exact 완전 실패 (0%)**: Rosenberg 보조변수로 QUBO 크기가 k*h보다 훨씬 커짐 (약 22×5=110 변수). 보조변수가 탐색 공간을 크게 확장하여 sweeps=1000으로는 불충분.
-4. **Concat-Approx vs Exact 트레이드오프**: Approx 모드는 보조변수가 없어(QUBO 크기=35) SA가 효율적으로 탐색. Exact는 정확하지만 보조변수 비용이 큼.
+1. **Concat-Greedy 전멸**: 모든 α에서 0%. 보조변수 비용 극복 불가.
+2. **Planted < Random < Hardened** (동일 α): Random landscape는 planted보다 쉽지만 hardened보다 어려움.
+   - α=0.01: Planted 23.3% < Random 56.6% < Hardened 84.7%
+   - α=0.001: Planted 10.9% < Random 39.2% < Hardened 81.8%
+3. **α=0.1 수렴**: 세 방법 모두 ~98-99%. 강한 posiform에서 base QUBO 차이 무시.
+4. **생성 속도**: Random은 ~0.7s (planted ~13s). QP fit이 constrained QP보다 빠름.
 
 ---
 
 ## 4. 특성 분석
 
-### Block-Diagonal 구조의 장단점
+### Base QUBO 비교 (동일 α에서)
 
-**장점**:
-- 단일 블록의 진리표 제약(n≤12)을 우회하여 임의 크기 QUBO 생성 가능
-- 각 블록의 ground state 유일성 → 전체 유일성 보장
-- Approx 모드에서 보조변수 0개 → QUBO 크기 = k×h
+| Base QUBO | 생성 방법 | QUBO 크기 | α=0.01 GS Rate | α=0.1 GS Rate |
+|-----------|-----------|-----------|----------------|---------------|
+| Planted TT QP (랜덤 target) | 진리표 planted → QP 최적화 | N | 23.30% | 98.10% |
+| Random TT QP | random 진리표 → unconstrained lstsq | N | 56.60% | 98.70% |
+| Random discrete-coeff (Hardened) | 랜덤 {-1,+1} 계수 | N | 84.70% | 99.70% |
+| Rosenberg (Greedy) | 진리표 → Möbius → Rosenberg | ~3.1×N | 0.00% | 0.00% |
 
-**단점**:
-- **Block-diagonal 구조 노출**: Q 행렬의 비대각 블록이 모두 0이므로, 관찰자가 쉽게 블록 구조를 탐지 가능. 랜덤 QUBO와 통계적으로 구별됨.
-- **블록 독립 분할 가능**: SA 또는 다른 솔버가 블록 구조를 인식하면 문제를 h개 소문제로 분할하여 개별적으로 풀 수 있음. 이 경우 난이도가 단일 블록 수준으로 하락.
-- **SA 난이도 한계**: 단일 블록이 SA-easy(k=7에서 ~58%)이므로, 블록 독립 풀이가 가능한 지능적 솔버에 대해서는 전체 문제도 SA-easy.
+### Landscape 특성 비교
+
+| 특성 | Planted | Random |
+|------|---------|--------|
+| Target 결정 | 사용자 지정 / 랜덤 | Brute force 발견 |
+| E(target) | 0 (고정) | Landscape에서 자연 최소 |
+| Local minima 수 | 적음 (bowl) | ~3.5/block (k=7) |
+| SA 난이도 | 중간 | 쉬움 (QP fit residual 얕음) |
+| Posiform 필수? | 아니오 | 예 |
+| 생성 속도 | 느림 (constrained QP) | 빠름 (lstsq) |
 
 ### 다른 방법론과의 포지셔닝
 
 | 생성기 | SA-Hard? | 구별 불가능? | 보조변수 | QUBO 크기 제한 |
 |--------|----------|-------------|---------|---------------|
-| Concat-Approx | 중간 (블록 수 의존) | 아니오 (block-diagonal) | 0 | 없음 |
-| Concat-Exact | SA-hard (보조변수 비용) | 아니오 | 많음 | 없음 |
-| Hardened Posiform | SA-hard (N≥500) | 예 (off-diagonal) | 0 | 없음 |
-| Wishart | SA-hard (alpha≥0.7) | 아니오 (low-rank) | 0 | 없음 |
-| Quiet Planting | SA-hard (field 의존) | 예 (alpha<3.86) | m개 | 없음 |
-
-Concat QUBO는 **정답이 보장된 대규모 벤치마크 생성**에 유용하지만, **SA-hardness나 통계적 은닉성**을 목표로 하는 용도에는 적합하지 않다.
+| Concat-Planted (α=0) | 중간 | 아니오 (block-diagonal) | 0/많음 | 없음 |
+| Concat-Planted (α>0) | 중간~쉬움 | 부분적 | 0/많음 | 없음 |
+| Concat-Random (α>0) | 쉬움~중간 | 부분적 | 0 | 없음 |
+| Hardened Posiform | SA-hard (N≥500) | 예 | 0 | 없음 |
+| Wishart | SA-hard (α≥0.7) | 아니오 (low-rank) | 0 | 없음 |
+| Quiet Planting | SA-hard (field 의존) | 예 (α<3.86) | m개 | 없음 |
 
 ---
 
 ## 5. 사용법
 
 ```bash
-# Approx 모드 (기본값, 보조변수 없음)
+# Planted Approx 모드 (기본값, 보조변수 없음, 동일 target)
 python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10
-python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10 --gap 2.0 --noise 1.0 --seed 42
+python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10 --seed 42
 
-# Exact 모드 (Rosenberg)
+# Planted Exact 모드 (Rosenberg greedy, 동일 target)
 python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10 --exact
 
-# h-Scaling 실험
-python3 truthtable_concat/test_truthtable_concat.py --scaling 100
+# Planted + Posiform hardening (블록별 랜덤 target 자동 적용)
+python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10 --harden 0.1
 
-# Hardened vs Concat 비교 실험
-python3 truthtable_concat/test_truthtable_concat.py --compare 100
+# Random landscape + Posiform hardening
+python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10 --random --harden 0.01
+python3 truthtable_concat/qubo_truthtable_concat.py 1001111 10 --random --harden 0.01 --seed 42
+
+# GS brute force 검증 (random landscape, n≤21)
+python3 truthtable_concat/test_truthtable_concat.py --verify 20
+
+# h-Scaling 실험 (6 configs)
+python3 truthtable_concat/test_truthtable_concat.py --scaling 10
+
+# 14-way 비교 실험
+python3 truthtable_concat/test_truthtable_concat.py --compare 10
 ```
 
 ---
@@ -204,7 +224,9 @@ python3 truthtable_concat/test_truthtable_concat.py --compare 100
 ## 6. 결론
 
 1. **Block-diagonal 접합**은 Truth Table QUBO의 크기 제한(n≤12)을 우회하는 실용적 방법이다.
-2. **Approx 모드**가 Exact보다 SA 탐색에 유리하다 (보조변수 0 vs 많음).
-3. **SA 난이도는 중간 수준**: 단일 블록이 SA-easy이므로, 블록 구조를 분할하면 쉽게 풀림. 블록 구조를 모르는 솔버에 대해서만 난이도가 있음.
-4. **N=35에서 Hardened(100%) > Concat-Approx(16%) > Concat-Exact(0%)**: Hardened는 이 규모에서 SA-easy이지만, Concat은 "모든 블록 동시 성공" 조건 때문에 오히려 더 어려움.
-5. **주된 용도**: 정답이 보장된 대규모 QUBO 벤치마크 생성. SA-hardness 벤치마크에는 Hardened Posiform이나 Quiet Planting이 더 적합.
+2. **Approx 모드**가 Greedy(exact)보다 SA 탐색에 압도적으로 유리하다 (보조변수 0 vs ×3.1 팽창). Greedy는 모든 α에서 0% — 실용성 없음.
+3. **Random landscape**: planted보다 SA-easy하지만 생성이 빠르고 genuine local minima를 제공. 동일 α에서 planted보다 항상 높은 성공률.
+4. **난이도 순서 (동일 α)**: Concat-Planted < Concat-Random < Hardened Posiform (SA-easy 순).
+5. **α=0.1에서 수렴**: 세 방법 모두 ~98-99%. 강한 posiform 신호에서 base QUBO 차이 소멸.
+6. **SA-hardness 벤치마크에는 Hardened Posiform이 가장 적합**. Concat은 큰 N에서도 생성 가능하다는 장점이 있으나, 작은 α에서도 SA가 쉽게 풀 수 있음.
+7. **Random landscape는 기존 truthtable_posiform 방법론을 통합**한 것으로, 동일 framework에서 planted/random 전환이 가능.
