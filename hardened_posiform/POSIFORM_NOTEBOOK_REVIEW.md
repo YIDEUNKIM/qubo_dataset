@@ -99,29 +99,94 @@ if deg > 1:
     print(f"[Warning] Degenerate ground state: {deg} solutions")
 ```
 
-### 2.3 고정 계수 a vs. 랜덤 양수 계수
+### 2.3 고정 계수 a — **수정 불필요**
 
-**논문 (Hahn 2023, Section 2.3)**: "the coefficient b_{zz'} > 0 of the posiform is actually freely choosable (as long as it is positive)" → 각 clause마다 **독립적인 랜덤 양수 계수** b > 0 부여.
+**논문 (Hahn 2023, Section 2.3)**: "the coefficient b_{zz'} > 0 of the posiform is actually freely choosable (as long as it is positive)" → 양수이기만 하면 고정값도 유효. 실험에서는 {1, 2} 집합에서 선택.
 
-**노트북**: 모든 term에 **동일한 a = 0.1** 사용.
+**논문 (Pelofske 2024, Section 2.2)**: "All posiform coefficients corresponding to a 2-SAT clause are chosen as **1**." → 명시적으로 1 고정.
 
-**영향**: 계수가 동일하면 QUBO의 에너지 landscape가 균일해져 solver에게 추가 정보를 줄 수 있음. 논문처럼 랜덤 계수를 사용하면 landscape가 더 복잡해짐.
+**노트북**: 모든 term에 **동일한 a = 0.1** 사용. 논문과 모순 없음 (양수 고정값).
 
-### 2.4 posiform scaling factor (α) 부재
+**참고**: `qubo_posiform_hardened.py`도 기본값 `posiform_coeff_range=(1.0, 1.0)` (고정 계수).
+
+### 2.4 posiform scaling factor (α) 부재 — **해결 완료**
 
 **Pelofske 2024의 핵심**: `Q_final = Σ R_i + α × P` — α는 별도의 전역 스케일링 파라미터 (실험값: 0.1, 0.01). α가 작을수록 문제가 더 어려워짐.
 
-**노트북**: posiform이 random QUBO와 같은 행렬에 직접 더해짐 (α=1에 해당). per-term 계수 a=0.1이 다른 역할을 함.
+**노트북 (수정 전)**: posiform이 random QUBO와 같은 행렬에 직접 더해짐 (α=1에 해당). per-term 계수 a=0.1이 다른 역할을 함.
 
-**수정 방향**: posiform QUBO를 별도로 생성한 뒤, `Q_final = Q_random + α * Q_posiform`으로 결합. `qubo_posiform_hardened.py`의 방식 참고.
+```python
+# 수정 전: mat(random QUBO)를 직접 수정 → α=1 고정
+def posiform_planting(mat, opt, a):    # mat를 직접 변경
+    ...
+    mat[i][j] += a                     # random QUBO에 바로 더함
+    ...
+    # 반환값 없음 (void)
 
-### 2.5 연속 vs. 이산 계수 random QUBO
+def gen_posiform_qubo(n, min_sub_graph_size, max_sub_graph_size, a):
+    mat, opt = gen_concatenated_random_qubo(n, min_sub_graph_size, max_sub_graph_size)
+    posiform_planting(mat, opt, a)     # mat를 직접 수정 → α=1 고정
+    return mat, opt, opt@mat@opt
+```
+
+**해결**: posiform QUBO를 별도 행렬로 생성한 뒤, `Q_final = Q_random + α * Q_posiform`으로 결합.
+
+```python
+# [수정 2.4] posiform을 별도 행렬에 쌓아서 반환
+def posiform_planting(opt, n, a):              # [수정 2.4] mat 제거, n 추가, 반환값 있음
+    mat_posiform = np.zeros((n, n))            # [수정 2.4] 별도의 posiform 전용 행렬
+    ...
+    # [수정 2.4] mat → mat_posiform: posiform 전용 행렬에 기록
+    mat_posiform[lo][hi] += a
+    ...
+    return mat_posiform                        # [수정 2.4] 별도 행렬 반환
+
+# [수정 2.4] posiform_scale(α) 파라미터 추가
+def gen_posiform_qubo(n, min_sub_graph_size, max_sub_graph_size, a, posiform_scale=1.0):
+    mat_random, opt = gen_concatenated_random_qubo(n, min_sub_graph_size, max_sub_graph_size)
+    mat_posiform = posiform_planting(opt, n, a)                   # [수정 2.4]
+    mat = mat_random + posiform_scale * mat_posiform              # [수정 2.4]
+    return mat, opt, opt @ mat @ opt
+```
+
+### 2.5 연속 vs. 이산 계수 random QUBO — **해결 완료**
 
 **논문 (Pelofske 2024, Section 2.1)**: discrete coefficient {-1, +1} (lin2) 또는 {-1, -0.9, ..., 0.9, 1} (lin20).
 
-**노트북**: `np.random.uniform(-1, 1)` 연속 균일분포.
+**노트북 (수정 전)**: `np.random.uniform(-1, 1)` 연속 균일분포.
 
-**영향**: 이산 계수(특히 lin2)가 SA에 대해 더 어려운 문제를 생성함 (논문 실험 결과).
+```python
+# 수정 전: 연속 균일분포
+coeff_boundary = 1
+
+def gen_random_qubo(n):
+    random_qubo = np.random.uniform(-coeff_boundary, coeff_boundary, (n, n))
+    return np.triu(random_qubo)
+```
+
+**해결**: `coeff_type` 파라미터 추가. 이산 계수 집합 `COEFF_LIN2`, `COEFF_LIN20` 정의.
+
+```python
+# [수정 2.5] 이산 계수 집합 정의
+COEFF_LIN2 = [-1, 1]                                              # [수정 2.5]
+COEFF_LIN20 = [round(-1 + 0.1 * i, 1) for i in range(21)]        # [수정 2.5]
+
+# [수정 2.5] coeff_type 파라미터 추가
+def gen_random_qubo(n, coeff_type='lin2'):                         # [수정 2.5]
+    coeffs = COEFF_LIN2 if coeff_type == 'lin2' else COEFF_LIN20   # [수정 2.5]
+    random_qubo = np.array([[random.choice(coeffs) for _ in range(n)] for _ in range(n)])  # [수정 2.5]
+    return np.triu(random_qubo)
+
+# 호출 체인에 coeff_type 전파
+def gen_concatenated_random_qubo(n, ..., coeff_type='lin2', ...):  # [수정 2.5]
+    ...
+    cur_mat = gen_random_qubo(cur_n, coeff_type)                   # [수정 2.5]
+    ...
+
+def gen_posiform_qubo(n, ..., coeff_type='lin2'):                  # [수정 2.5]
+    mat_random, opt = gen_concatenated_random_qubo(..., coeff_type) # [수정 2.5]
+    ...
+```
 
 ### 2.6 Full matrix vs. upper-triangular — **해결 완료**
 
@@ -129,9 +194,43 @@ if deg > 1:
 
 **논문/기존 코드**: upper-triangular dict `{(i,j): weight}` (i≤j). 각 pair의 coupling이 단일 값.
 
+```python
+# 수정 전: full matrix
+def gen_random_qubo(n):
+    random_qubo = np.random.uniform(-coeff_boundary, coeff_boundary, (n, n))
+    return random_qubo                 # 하삼각도 포함
+
+def posiform_planting(mat, opt, a):
+    ...
+    mat[i][j] += a                     # i > j일 때 하삼각에 기록됨
+```
+
 **해결**: 상삼각 행렬 형식으로 전환.
-- `gen_random_qubo`: `np.triu()`로 하삼각을 0으로 처리
-- `posiform_planting`: off-diagonal 업데이트 시 `lo, hi = min(i,j), max(i,j)`로 항상 상삼각 위치에 접근
+
+```python
+# [수정] gen_random_qubo — np.triu()로 상삼각만 유지
+def gen_random_qubo(n):
+    random_qubo = np.random.uniform(-coeff_boundary, coeff_boundary, (n, n))
+    return np.triu(random_qubo)        # [수정] 상삼각만 유지, 하삼각은 0
+
+# [수정] posiform_planting — off-diagonal 접근 시 mat[lo][hi] 사용
+def posiform_planting(...):
+    ...
+    lo, hi = min(i, j), max(i, j)      # [수정] 상삼각 형식 유지
+
+    if wi == 0 and wj == 0:            # (1-xi)(1-xj) * a
+        mat_posiform[i][i] -= a
+        mat_posiform[j][j] -= a
+        mat_posiform[lo][hi] += a      # [수정] mat[i][j] → mat[lo][hi]
+    elif wi == 0 and wj == 1:          # (1-xi)xj * a
+        mat_posiform[j][j] += a
+        mat_posiform[lo][hi] -= a      # [수정] mat[i][j] → mat[lo][hi]
+    elif wi == 1 and wj == 0:          # xi(1-xj) * a
+        mat_posiform[i][i] += a
+        mat_posiform[lo][hi] -= a      # [수정] mat[i][j] → mat[lo][hi]
+    else:                              # xixj * a
+        mat_posiform[lo][hi] += a      # [수정] mat[i][j] → mat[lo][hi]
+```
 
 **참고**: `x @ mat @ x`에서 full matrix는 coupling = `Q[i][j] + Q[j][i]` (두 번 기여), upper-triangular는 coupling = `Q[i][j]` (한 번)이므로, 같은 값이 들어있어도 에너지가 달라진다. D-Wave `neal`/`dimod`의 표준 입력도 upper-triangular `{(i,j): weight}` (i ≤ j) 형식이므로 상삼각이 맞다.
 
@@ -158,30 +257,41 @@ Cell 5에서 `np.array_equal(opt_init, opt)`로 최적해 변경만 확인하지
 
 | 항목 | 논문 (Pelofske 2024) | 노트북 (posiform.ipynb) | 기존 구현 (qubo_posiform_hardened.py) |
 |---|---|---|---|
-| Wrong tuple/pair | 1개 랜덤 | 3개 전부 | 1개 랜덤 (via qubo_posiform.py) |
-| Uniqueness 검증 | MiniSat 2-SAT solver | 없음 | Tarjan SCC + uniqueness check |
-| Posiform 계수 | 랜덤 양수 (논문: 1 고정) | 고정 a | 랜덤 양수 (coeff_range) |
-| Scaling α | 별도 파라미터 (0.1, 0.01) | 없음 (α=1) | 별도 파라미터 (posiform_scale) |
-| Random QUBO 계수 | 이산 (lin2/lin20) | 연속 uniform | 이산 (lin2/lin20) |
+| Wrong tuple/pair | 1개 랜덤 | 1개 랜덤 (수정 완료) | 1개 랜덤 (via qubo_posiform.py) |
+| Uniqueness 검증 | MiniSat 2-SAT solver | MiniSat (수정 완료) | Tarjan SCC + uniqueness check |
+| Posiform 계수 | 자유 선택 (양수, 고정도 유효) | 고정 a | coeff_range (기본 1.0 고정) |
+| Scaling α | 별도 파라미터 (0.1, 0.01) | 별도 파라미터 (posiform_scale, 수정 완료) | 별도 파라미터 (posiform_scale) |
+| Random QUBO 계수 | 이산 (lin2/lin20) | 이산 (lin2/lin20, 수정 완료) | 이산 (lin2/lin20) |
 | 행렬 형식 | upper-triangular | upper-triangular (수정 완료) | upper-triangular dict |
-| Subgraph 분할 | Kernighan-Lin bisection | 랜덤 크기 순차 분할 | 균등 순차 분할 |
-| GS 유일성 보장 | 증명 (Section 2.2) | 미보장 | 보장 (posiform uniqueness) |
+| Subgraph 분할 | Kernighan-Lin bisection | 균등 분할 (크기 차이 최대 1, 수정 완료) | 균등 순차 분할 |
+| GS 유일성 보장 | 증명 (Section 2.2) | 보장 (MiniSat, 수정 완료) | 보장 (posiform uniqueness) |
 
 ---
 
 ## 5. 결론
 
-노트북의 posiform planting은 **posiform의 non-negativity와 target에서의 zero 속성은 유지**하므로 ground state 보존은 수학적으로 맞다. 그러나 **uniqueness 보장이 없고, 논문의 핵심 구조 (2-SAT + uniqueness check + α scaling + 이산 계수)가 빠져 있어** Pelofske 2024 논문의 정확한 재현이라고 보기 어렵다.
+노트북의 posiform planting은 **posiform의 non-negativity와 target에서의 zero 속성은 유지**하므로 ground state 보존은 수학적으로 맞다.
 
-논문을 정확히 재현한 구현은 `hardened_posiform/qubo_posiform_hardened.py`이며, 노트북은 posiform planting의 기본 아이디어를 프로토타이핑한 수준으로 이해해야 한다.
+주요 수정 사항 (해결 완료):
+- **2.1** Wrong tuple 1개 랜덤 선택 (논문 방식)
+- **2.2** MiniSat 2-SAT uniqueness 검증 (GS 유일성 보장)
+- **2.4** posiform scaling factor α 분리 (`Q_final = Q_random + α × Q_posiform`)
+- **2.5** 이산 계수 random QUBO (lin2/lin20)
+- **2.6** Upper-triangular 행렬 형식
+- Subgraph 균등 분할 (`max_sub_graph_size`만 사용, 크기 차이 최대 1)
+
+남은 차이점:
+- **Subgraph 분할 알고리즘**: 논문은 Kernighan-Lin bisection (hardware graph용), 노트북은 순차 균등 분할. complete graph에서는 분할 알고리즘 차이가 성능에 영향 미미.
+
+정밀 재현 구현은 `hardened_posiform/qubo_posiform_hardened.py`이며, 노트북은 핵심 구조를 대부분 반영한 학습/프로토타이핑 용도로 사용할 수 있다.
 
 ---
 
 ## 6. 수정 방법 제안
 
-### 6.1 [필수] Wrong tuple 선택: 3개 전부 → 1개 랜덤
+### 6.1 [필수] Wrong tuple 선택: 3개 전부 → 1개 랜덤 — **해결 완료**
 
-**현재 (노트북)**:
+**수정 전 (노트북)**:
 ```python
 # 매 pair마다 3개 wrong tuple 전부 추가
 if opt[i] != 0 or opt[j] != 0:  # (0,0) 배제
@@ -214,9 +324,9 @@ def posiform_planting(mat, opt, a):
 
 **효과**: 논문과 동일한 clause-by-clause 구성. 에너지 landscape의 다양성 증가.
 
-### 6.2 [필수] Uniqueness 검증 추가
+### 6.2 [필수] Uniqueness 검증 추가 — **해결 완료** (방법 B 적용)
 
-**방법 A — 간단한 변수 커버리지 확인** (최소한의 수정):
+**방법 A — 간단한 변수 커버리지 확인** (미적용):
 ```python
 def posiform_planting(mat, opt, a, t):
     n = mat.shape[0]
@@ -235,7 +345,7 @@ def posiform_planting(mat, opt, a, t):
         # posiform 항 추가 (위와 동일)
 ```
 
-**방법 B — 2-SAT uniqueness 검증 도입** (논문 재현):
+**방법 B — 2-SAT uniqueness 검증 도입** (적용됨):
 ```python
 # posiform/qubo_posiform.py의 함수 활용
 from posiform.qubo_posiform import create_planted_2sat, posiform_to_qubo
@@ -255,114 +365,65 @@ def gen_posiform_qubo_v2(n, min_sub_graph_size, max_sub_graph_size, alpha):
     return mat, opt, opt @ mat @ opt, is_unique
 ```
 
-### 6.3 [권장] posiform scaling factor (α) 분리
+### 6.3 [권장] posiform scaling factor (α) 분리 — **해결 완료**
 
-**현재**: posiform과 random QUBO가 같은 행렬에 혼합 (α=1).
+**수정 전**: posiform과 random QUBO가 같은 행렬에 혼합 (α=1).
 
-**수정안**:
+**적용된 수정**:
 ```python
-def gen_posiform_qubo(n, min_sub_graph_size, max_sub_graph_size, alpha):
-    # 1. Random QUBO 생성
+# posiform_planting: mat 제거, 별도 행렬 생성 후 반환
+def posiform_planting(opt, n, a):              # [수정 2.4] mat 제거, n 추가, 반환값 있음
+    mat_posiform = np.zeros((n, n))            # [수정 2.4] 별도의 posiform 전용 행렬
+    ...
+    return mat_posiform                        # [수정 2.4] 별도 행렬 반환
+
+# gen_posiform_qubo: α로 결합
+def gen_posiform_qubo(n, min_sub_graph_size, max_sub_graph_size, a, posiform_scale=1.0):
     mat_random, opt = gen_concatenated_random_qubo(n, min_sub_graph_size, max_sub_graph_size)
-
-    # 2. Posiform QUBO를 별도 행렬로 생성
-    mat_posiform = np.zeros((n, n))
-    posiform_planting(mat_posiform, opt, a=1.0)  # MiniSat이 자동 종료
-
-    # 3. 결합: Q_final = Q_random + α * Q_posiform
-    mat = mat_random + alpha * mat_posiform
-
+    mat_posiform = posiform_planting(opt, n, a)                   # [수정 2.4]
+    mat = mat_random + posiform_scale * mat_posiform              # [수정 2.4]
     return mat, opt, opt @ mat @ opt
 ```
 
 **효과**: α를 독립적으로 조절하여 난이도 튜닝 가능 (α=0.01이 가장 어려움).
 
-### 6.4 [권장] 랜덤 양수 계수 도입
+### 6.4 ~~[권장] 랜덤 양수 계수 도입~~ — **수정 불필요**
 
-**현재**: 모든 posiform term에 고정 계수 `a`.
+논문은 "freely choosable (as long as it is positive)"로 고정 계수도 유효. `qubo_posiform_hardened.py`도 기본값 `(1.0, 1.0)` 고정. 현재 노트북의 고정 `a = 0.1`은 논문과 모순 없음.
 
-**수정안**:
+### 6.5 [권장] 이산 계수 random QUBO — **해결 완료**
+
+**수정 전**:
 ```python
-def posiform_planting(mat, opt, coeff_range):
-    n = mat.shape[0]
-    lo, hi = coeff_range
-    max_clauses = 10 * n
-    for step in range(max_clauses):
-        i, j = random.sample(range(n), 2)
-        a = random.uniform(lo, hi)  # 매 clause마다 랜덤 계수
-        # ... (MiniSat uniqueness check로 자동 종료)
-```
-
-**효과**: 에너지 landscape가 더 복잡해져 solver에게 패턴을 노출하지 않음.
-
-### 6.5 [권장] 이산 계수 random QUBO
-
-**현재**:
-```python
+coeff_boundary = 1
 def gen_random_qubo(n):
     return np.random.uniform(-coeff_boundary, coeff_boundary, (n, n))
 ```
 
-**수정안**:
+**적용된 수정**:
 ```python
-COEFF_LIN2 = [-1, 1]
-COEFF_LIN20 = [round(-1 + 0.1 * i, 1) for i in range(21)]
+COEFF_LIN2 = [-1, 1]                                              # [수정 2.5]
+COEFF_LIN20 = [round(-1 + 0.1 * i, 1) for i in range(21)]        # [수정 2.5]
 
-def gen_random_qubo(n, coeff_type='lin2'):
+def gen_random_qubo(n, coeff_type='lin2'):                         # [수정 2.5]
     coeffs = COEFF_LIN2 if coeff_type == 'lin2' else COEFF_LIN20
-    return np.array([[random.choice(coeffs) for _ in range(n)] for _ in range(n)])
+    random_qubo = np.array([[random.choice(coeffs) for _ in range(n)] for _ in range(n)])
+    return np.triu(random_qubo)
 ```
 
 **효과**: 논문과 동일한 이산 계수. lin2가 SA에 대해 더 어려운 문제를 생성.
 
-### 6.6 [선택] float 비교 안전화
+### 6.6 [선택] float 비교 안전화 — **해결 완료** (2.1에서 함께 해결)
 
-**현재**:
-```python
-if opt[i] != 0 or opt[j] != 0:
-```
+**수정 전**: `opt[i] != 0` float 비교.
 
-**수정안**:
-```python
-opt = opt.astype(int)  # 함수 시작 시 정수 변환
-# 이후 opt[i] != 0 비교는 정수 비교로 안전
-```
+**해결**: `int(opt[i])` 변환 사용. `target_tuple = (int(opt[i]), int(opt[j]))` 형태로 정수 비교.
 
-### 6.7 [선택] 검증 루프 강화
+### 6.7 [선택] 검증 루프 강화 — **해결 완료** (2.2에서 함께 해결)
 
-**현재**: 최적해 변경만 확인.
+**수정 전**: 최적해 변경만 확인.
 
-**수정안**:
-```python
-def find_opt_brute_force(mat, debug=False):
-    n = mat.shape[0]
-    best_x = None
-    best_val = float('inf')
-    num_degenerate = 0  # 축퇴도 추가
-
-    for bits in product([0, 1], repeat=n):
-        x = np.array(bits)
-        cur_val = x @ mat @ x
-
-        if cur_val < best_val - 1e-12:
-            best_val = cur_val
-            best_x = x
-            num_degenerate = 1
-        elif abs(cur_val - best_val) < 1e-12:
-            num_degenerate += 1
-
-    if debug:
-        print("opt_x:", best_x, "\nopt_val:", best_val, "\ndegeneracy:", num_degenerate)
-
-    return best_x, best_val, num_degenerate
-
-# 검증 루프에서
-opt, opt_val, deg = find_opt_brute_force(qubo, False)
-if not np.array_equal(opt_init, opt):
-    print("[Error] Optimum changed!")
-if deg > 1:
-    print(f"[Warning] Degenerate ground state: {deg} solutions")
-```
+**해결**: `find_opt_brute_force`에 `num_degenerate` 반환 추가. 검증 셀에서 `deg > 1`이면 Warning 출력.
 
 ### 6.8 [선택] Upper-triangular 행렬 형식 전환 — **해결 완료**
 
@@ -402,11 +463,11 @@ else:                     # xixj * a
 
 | 우선순위 | 항목 | 난이도 | 영향도 |
 |---|---|---|---|
-| **P0** | 6.2 Uniqueness 검증 | 중 | 높음 — GS 유일성 보장 |
-| **P0** | 6.1 Wrong tuple 1개 선택 | 낮 | 높음 — 논문 방법론 일치 |
-| **P1** | 6.3 α scaling 분리 | 낮 | 중 — 난이도 튜닝 |
-| **P1** | 6.4 랜덤 계수 | 낮 | 중 — landscape 다양성 |
-| **P2** | 6.5 이산 계수 | 낮 | 중 — 논문 재현 |
-| **P2** | 6.6 float 비교 | 낮 | 낮 — 안전성 |
-| **P2** | 6.7 검증 강화 | 낮 | 낮 — 디버깅 |
+| ~~**P0**~~ | ~~6.2 Uniqueness 검증~~ | ~~중~~ | ~~높음~~ — **해결 완료** |
+| ~~**P0**~~ | ~~6.1 Wrong tuple 1개 선택~~ | ~~낮~~ | ~~높음~~ — **해결 완료** |
+| ~~**P1**~~ | ~~6.3 α scaling 분리~~ | ~~낮~~ | ~~중~~ — **해결 완료** |
+| ~~**P1**~~ | ~~6.4 랜덤 계수~~ | ~~낮~~ | ~~중~~ — **수정 불필요** |
+| ~~**P2**~~ | ~~6.5 이산 계수~~ | ~~낮~~ | ~~중~~ — **해결 완료** |
+| ~~**P2**~~ | ~~6.6 float 비교~~ | ~~낮~~ | ~~낮~~ — **해결 완료** (2.1) |
+| ~~**P2**~~ | ~~6.7 검증 강화~~ | ~~낮~~ | ~~낮~~ — **해결 완료** (2.2) |
 | ~~**P3**~~ | ~~6.8 행렬 형식~~ | ~~중~~ | ~~낮~~ — **해결 완료** |
