@@ -1,0 +1,65 @@
+{
+  "params": {
+    "qpu_solver": "Advantage_system4.1",
+    "topology": "pegasus",
+    "qpu_qubits": 5627,
+    "alphas": [
+      0,
+      0.001,
+      0.003,
+      0.005,
+      0.01,
+      0.03,
+      0.05,
+      0.1
+    ],
+    "annealing_time": 20,
+    "num_reads": 100,
+    "num_instances": 500,
+    "energy_tol": 0.5,
+    "elapsed_s": 3787.1,
+    "date": "2026-03-25 23:35"
+  },
+  "results": {
+    "0": {
+      "gsp_eng": 0.00392,
+      "eng_found": 196,
+      "total": 50000
+    },
+    "0.001": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.003": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.005": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.01": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.03": {
+      "gsp_eng": 0.00012000240004800096,
+      "eng_found": 6,
+      "total": 49999
+    },
+    "0.05": {
+      "gsp_eng": 0.002265164575231528,
+      "eng_found": 113,
+      "total": 49886
+    },
+    "0.1": {
+      "gsp_eng": 0.03973259052924791,
+      "eng_found": 1783,
+      "total": 44875
+    }
+  }
+}
