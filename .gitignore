@@ -3,3 +3,6 @@ __pycache__/
 .idea/
 .venv/
 *.egg-info/
+
+# QPU 인스턴스 pickle은 로컬 전용 (GitHub 100MB 제한 + 재생성 가능)
+hardened_posiform/instances/*.pkl

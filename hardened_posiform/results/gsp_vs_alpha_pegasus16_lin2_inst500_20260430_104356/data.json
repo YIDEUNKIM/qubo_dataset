@@ -1,0 +1,327 @@
+{
+  "params": {
+    "topology": "pegasus",
+    "topo_size": 16,
+    "coeff": "lin2",
+    "num_instances": 500,
+    "num_reads": 100,
+    "fixed_sweep": 100,
+    "alphas": [
+      0,
+      1e-14,
+      1e-13,
+      1e-12,
+      1e-11,
+      1e-10,
+      1e-09,
+      1e-08,
+      1e-07,
+      1.2e-07,
+      1.4e-07,
+      1.5e-07,
+      2e-07,
+      2.5e-07,
+      3e-07,
+      5e-07,
+      7e-07,
+      9e-07,
+      1e-06,
+      1e-05,
+      0.0001,
+      0.001,
+      0.01,
+      0.03,
+      0.05,
+      0.07,
+      0.9,
+      0.1
+    ],
+    "elapsed_s": 1900.7
+  },
+  "gap_stats": {
+    "delta_p_mean": 1.782,
+    "delta_r_mean": 1.0
+  },
+  "results": {
+    "0": {
+      "gsp_eng": 0.10922,
+      "gsp_bit": 0.0,
+      "eng_ok": 5461,
+      "bit_ok": 0,
+      "hd_sum": 23380308,
+      "avg_hd": 46760.616,
+      "total": 50000,
+      "eng_found": 5461
+    },
+    "1e-14": {
+      "gsp_eng": 0.04526,
+      "gsp_bit": 0.0,
+      "eng_ok": 2263,
+      "bit_ok": 0,
+      "hd_sum": 4213109,
+      "avg_hd": 8426.218,
+      "total": 50000,
+      "eng_found": 2263
+    },
+    "1e-13": {
+      "gsp_eng": 0.04596,
+      "gsp_bit": 0.0,
+      "eng_ok": 2298,
+      "bit_ok": 0,
+      "hd_sum": 4195576,
+      "avg_hd": 8391.152,
+      "total": 50000,
+      "eng_found": 2298
+    },
+    "1e-12": {
+      "gsp_eng": 0.04616,
+      "gsp_bit": 0.0,
+      "eng_ok": 2308,
+      "bit_ok": 0,
+      "hd_sum": 4200553,
+      "avg_hd": 8401.106,
+      "total": 50000,
+      "eng_found": 2308
+    },
+    "1e-11": {
+      "gsp_eng": 0.04222,
+      "gsp_bit": 0.0,
+      "eng_ok": 2111,
+      "bit_ok": 0,
+      "hd_sum": 4237811,
+      "avg_hd": 8475.622,
+      "total": 50000,
+      "eng_found": 2111
+    },
+    "1e-10": {
+      "gsp_eng": 0.0444,
+      "gsp_bit": 0.0,
+      "eng_ok": 2220,
+      "bit_ok": 0,
+      "hd_sum": 4214962,
+      "avg_hd": 8429.924,
+      "total": 50000,
+      "eng_found": 2220
+    },
+    "1e-09": {
+      "gsp_eng": 0.04658,
+      "gsp_bit": 0.0,
+      "eng_ok": 2329,
+      "bit_ok": 0,
+      "hd_sum": 4187601,
+      "avg_hd": 8375.202,
+      "total": 50000,
+      "eng_found": 2329
+    },
+    "1e-08": {
+      "gsp_eng": 0.0464,
+      "gsp_bit": 0.0,
+      "eng_ok": 2320,
+      "bit_ok": 0,
+      "hd_sum": 4193467,
+      "avg_hd": 8386.934,
+      "total": 50000,
+      "eng_found": 2320
+    },
+    "1e-07": {
+      "gsp_eng": 0.03746,
+      "gsp_bit": 0.0,
+      "eng_ok": 1873,
+      "bit_ok": 0,
+      "hd_sum": 4188054,
+      "avg_hd": 8376.108,
+      "total": 50000,
+      "eng_found": 1873
+    },
+    "1.2e-07": {
+      "gsp_eng": 0.02774,
+      "gsp_bit": 0.0,
+      "eng_ok": 1387,
+      "bit_ok": 0,
+      "hd_sum": 4195183,
+      "avg_hd": 8390.366,
+      "total": 50000,
+      "eng_found": 1387
+    },
+    "1.4e-07": {
+      "gsp_eng": 0.01816,
+      "gsp_bit": 0.0,
+      "eng_ok": 908,
+      "bit_ok": 0,
+      "hd_sum": 4195019,
+      "avg_hd": 8390.038,
+      "total": 50000,
+      "eng_found": 908
+    },
+    "1.5e-07": {
+      "gsp_eng": 0.0157,
+      "gsp_bit": 0.0,
+      "eng_ok": 785,
+      "bit_ok": 0,
+      "hd_sum": 4186133,
+      "avg_hd": 8372.266,
+      "total": 50000,
+      "eng_found": 785
+    },
+    "2e-07": {
+      "gsp_eng": 0.0052,
+      "gsp_bit": 0.0,
+      "eng_ok": 260,
+      "bit_ok": 0,
+      "hd_sum": 4192934,
+      "avg_hd": 8385.868,
+      "total": 50000,
+      "eng_found": 260
+    },
+    "2.5e-07": {
+      "gsp_eng": 0.00164,
+      "gsp_bit": 0.0,
+      "eng_ok": 82,
+      "bit_ok": 0,
+      "hd_sum": 4190752,
+      "avg_hd": 8381.504,
+      "total": 50000,
+      "eng_found": 82
+    },
+    "3e-07": {
+      "gsp_eng": 0.00046,
+      "gsp_bit": 0.0,
+      "eng_ok": 23,
+      "bit_ok": 0,
+      "hd_sum": 4189195,
+      "avg_hd": 8378.39,
+      "total": 50000,
+      "eng_found": 23
+    },
+    "5e-07": {
+      "gsp_eng": 0.0001,
+      "gsp_bit": 0.0,
+      "eng_ok": 5,
+      "bit_ok": 0,
+      "hd_sum": 4187277,
+      "avg_hd": 8374.554,
+      "total": 50000,
+      "eng_found": 5
+    },
+    "7e-07": {
+      "gsp_eng": 2e-05,
+      "gsp_bit": 0.0,
+      "eng_ok": 1,
+      "bit_ok": 0,
+      "hd_sum": 4191275,
+      "avg_hd": 8382.55,
+      "total": 50000,
+      "eng_found": 1
+    },
+    "9e-07": {
+      "gsp_eng": 0.0,
+      "gsp_bit": 0.0,
+      "eng_ok": 0,
+      "bit_ok": 0,
+      "hd_sum": 4192557,
+      "avg_hd": 8385.114,
+      "total": 50000,
+      "eng_found": 0
+    },
+    "1e-06": {
+      "gsp_eng": 0.0,
+      "gsp_bit": 0.0,
+      "eng_ok": 0,
+      "bit_ok": 0,
+      "hd_sum": 4191947,
+      "avg_hd": 8383.894,
+      "total": 50000,
+      "eng_found": 0
+    },
+    "1e-05": {
+      "gsp_eng": 0.0,
+      "gsp_bit": 0.0,
+      "eng_ok": 0,
+      "bit_ok": 0,
+      "hd_sum": 4186917,
+      "avg_hd": 8373.834,
+      "total": 50000,
+      "eng_found": 0
+    },
+    "0.0001": {
+      "gsp_eng": 0.0,
+      "gsp_bit": 0.0,
+      "eng_ok": 0,
+      "bit_ok": 0,
+      "hd_sum": 4167292,
+      "avg_hd": 8334.584,
+      "total": 50000,
+      "eng_found": 0
+    },
+    "0.001": {
+      "gsp_eng": 0.0,
+      "gsp_bit": 0.0,
+      "eng_ok": 0,
+      "bit_ok": 0,
+      "hd_sum": 3974597,
+      "avg_hd": 7949.194,
+      "total": 50000,
+      "eng_found": 0
+    },
+    "0.01": {
+      "gsp_eng": 0.00056,
+      "gsp_bit": 0.00056,
+      "eng_ok": 28,
+      "bit_ok": 28,
+      "hd_sum": 2542954,
+      "avg_hd": 5085.908,
+      "total": 50000,
+      "eng_found": 28
+    },
+    "0.03": {
+      "gsp_eng": 0.05766,
+      "gsp_bit": 0.05766,
+      "eng_ok": 2883,
+      "bit_ok": 2883,
+      "hd_sum": 869200,
+      "avg_hd": 1738.4,
+      "total": 50000,
+      "eng_found": 2883
+    },
+    "0.05": {
+      "gsp_eng": 0.41358,
+      "gsp_bit": 0.41358,
+      "eng_ok": 20679,
+      "bit_ok": 20679,
+      "hd_sum": 230142,
+      "avg_hd": 460.284,
+      "total": 50000,
+      "eng_found": 20679
+    },
+    "0.07": {
+      "gsp_eng": 0.80644,
+      "gsp_bit": 0.80644,
+      "eng_ok": 40322,
+      "bit_ok": 40322,
+      "hd_sum": 48445,
+      "avg_hd": 96.89,
+      "total": 50000,
+      "eng_found": 40322
+    },
+    "0.9": {
+      "gsp_eng": 0.99884,
+      "gsp_bit": 0.99884,
+      "eng_ok": 49942,
+      "bit_ok": 49942,
+      "hd_sum": 117,
+      "avg_hd": 0.234,
+      "total": 50000,
+      "eng_found": 49942
+    },
+    "0.1": {
+      "gsp_eng": 0.96208,
+      "gsp_bit": 0.96208,
+      "eng_ok": 48104,
+      "bit_ok": 48104,
+      "hd_sum": 7280,
+      "avg_hd": 14.56,
+      "total": 50000,
+      "eng_found": 48104
+    }
+  }
+}

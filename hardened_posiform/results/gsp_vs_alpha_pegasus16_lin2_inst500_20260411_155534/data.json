@@ -1,0 +1,163 @@
+{
+  "params": {
+    "topology": "pegasus",
+    "topo_size": 16,
+    "coeff": "lin2",
+    "num_instances": 500,
+    "num_reads": 100,
+    "fixed_sweep": 1000,
+    "alphas": [
+      0,
+      1e-14,
+      1e-13,
+      1e-12,
+      1e-11,
+      1e-10,
+      1e-09,
+      1e-08,
+      1e-07,
+      1.5e-07,
+      2e-07,
+      2.5e-07,
+      3e-07,
+      5e-07,
+      7e-07,
+      9e-07,
+      1e-06,
+      1e-05,
+      0.0001,
+      0.001,
+      0.003,
+      0.01,
+      0.03,
+      0.1
+    ],
+    "elapsed_s": 7757.8
+  },
+  "gap_stats": {
+    "delta_p_mean": 1.782,
+    "delta_r_mean": 1.0
+  },
+  "results": {
+    "0": {
+      "gsp_eng": 0.5626,
+      "eng_found": 28130,
+      "total": 50000
+    },
+    "1e-14": {
+      "gsp_eng": 0.3337,
+      "eng_found": 16685,
+      "total": 50000
+    },
+    "1e-13": {
+      "gsp_eng": 0.33748,
+      "eng_found": 16874,
+      "total": 50000
+    },
+    "1e-12": {
+      "gsp_eng": 0.33826,
+      "eng_found": 16913,
+      "total": 50000
+    },
+    "1e-11": {
+      "gsp_eng": 0.31848,
+      "eng_found": 15924,
+      "total": 50000
+    },
+    "1e-10": {
+      "gsp_eng": 0.33052,
+      "eng_found": 16526,
+      "total": 50000
+    },
+    "1e-09": {
+      "gsp_eng": 0.3436,
+      "eng_found": 17180,
+      "total": 50000
+    },
+    "1e-08": {
+      "gsp_eng": 0.3426,
+      "eng_found": 17130,
+      "total": 50000
+    },
+    "1e-07": {
+      "gsp_eng": 0.2856,
+      "eng_found": 14280,
+      "total": 50000
+    },
+    "1.5e-07": {
+      "gsp_eng": 0.13102,
+      "eng_found": 6551,
+      "total": 50000
+    },
+    "2e-07": {
+      "gsp_eng": 0.04544,
+      "eng_found": 2272,
+      "total": 50000
+    },
+    "2.5e-07": {
+      "gsp_eng": 0.0153,
+      "eng_found": 765,
+      "total": 50000
+    },
+    "3e-07": {
+      "gsp_eng": 0.0062,
+      "eng_found": 310,
+      "total": 50000
+    },
+    "5e-07": {
+      "gsp_eng": 0.0005,
+      "eng_found": 25,
+      "total": 50000
+    },
+    "7e-07": {
+      "gsp_eng": 4e-05,
+      "eng_found": 2,
+      "total": 50000
+    },
+    "9e-07": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "1e-06": {
+      "gsp_eng": 2e-05,
+      "eng_found": 1,
+      "total": 50000
+    },
+    "1e-05": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.0001": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.001": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.003": {
+      "gsp_eng": 2e-05,
+      "eng_found": 1,
+      "total": 50000
+    },
+    "0.01": {
+      "gsp_eng": 0.00966,
+      "eng_found": 483,
+      "total": 50000
+    },
+    "0.03": {
+      "gsp_eng": 0.6257,
+      "eng_found": 31285,
+      "total": 50000
+    },
+    "0.1": {
+      "gsp_eng": 0.99754,
+      "eng_found": 49877,
+      "total": 50000
+    }
+  }
+}

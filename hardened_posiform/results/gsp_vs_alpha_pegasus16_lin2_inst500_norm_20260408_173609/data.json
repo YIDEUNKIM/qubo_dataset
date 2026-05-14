@@ -1,0 +1,135 @@
+{
+  "params": {
+    "topology": "pegasus",
+    "topo_size": 16,
+    "coeff": "lin2",
+    "num_instances": 500,
+    "num_reads": 100,
+    "fixed_sweep": 1000,
+    "alphas": [
+      0,
+      1e-14,
+      3e-14,
+      1e-13,
+      3e-13,
+      1e-12,
+      3e-12,
+      1e-11,
+      1e-10,
+      1e-09,
+      1e-08,
+      1e-07,
+      1e-06,
+      1e-05,
+      0.0001,
+      0.001,
+      0.01,
+      0.1
+    ],
+    "elapsed_s": 3645.1,
+    "normalization": {
+      "enabled": true,
+      "p_max_mean": 24.14,
+      "p_max_min": 17.0,
+      "p_max_max": 39.0,
+      "alpha_is_normalized": true
+    }
+  },
+  "gap_stats": {
+    "delta_p_mean_raw": 1.782,
+    "delta_p_mean_norm": 0.07381938690969346,
+    "delta_r_mean": 1.0
+  },
+  "results": {
+    "0": {
+      "gsp_eng": 0.56176,
+      "eng_found": 28088,
+      "total": 50000
+    },
+    "1e-14": {
+      "gsp_eng": 0.32978,
+      "eng_found": 16489,
+      "total": 50000
+    },
+    "3e-14": {
+      "gsp_eng": 0.33054,
+      "eng_found": 16527,
+      "total": 50000
+    },
+    "1e-13": {
+      "gsp_eng": 0.33588,
+      "eng_found": 16794,
+      "total": 50000
+    },
+    "3e-13": {
+      "gsp_eng": 0.33684,
+      "eng_found": 16842,
+      "total": 50000
+    },
+    "1e-12": {
+      "gsp_eng": 0.339,
+      "eng_found": 16950,
+      "total": 50000
+    },
+    "3e-12": {
+      "gsp_eng": 0.3338,
+      "eng_found": 16690,
+      "total": 50000
+    },
+    "1e-11": {
+      "gsp_eng": 0.3348,
+      "eng_found": 16740,
+      "total": 50000
+    },
+    "1e-10": {
+      "gsp_eng": 0.33378,
+      "eng_found": 16689,
+      "total": 50000
+    },
+    "1e-09": {
+      "gsp_eng": 0.33318,
+      "eng_found": 16659,
+      "total": 50000
+    },
+    "1e-08": {
+      "gsp_eng": 0.34342,
+      "eng_found": 17171,
+      "total": 50000
+    },
+    "1e-07": {
+      "gsp_eng": 0.33684,
+      "eng_found": 16842,
+      "total": 50000
+    },
+    "1e-06": {
+      "gsp_eng": 0.33586,
+      "eng_found": 16793,
+      "total": 50000
+    },
+    "1e-05": {
+      "gsp_eng": 0.0008,
+      "eng_found": 40,
+      "total": 50000
+    },
+    "0.0001": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.001": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.01": {
+      "gsp_eng": 0.0,
+      "eng_found": 0,
+      "total": 50000
+    },
+    "0.1": {
+      "gsp_eng": 2e-05,
+      "eng_found": 1,
+      "total": 50000
+    }
+  }
+}
