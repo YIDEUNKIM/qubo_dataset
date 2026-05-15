@@ -15,10 +15,9 @@ import neal
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from truthtable_concat.qubo_truthtable_concat import (
+from etc.truthtable_concat.qubo_truthtable_concat import (
     create_qubo_concat, verify_ground_state
 )
-from qubo_utils import calculate_energy
 
 # Lazy imports
 try:

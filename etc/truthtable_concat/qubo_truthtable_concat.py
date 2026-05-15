@@ -45,11 +45,11 @@ import warnings
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
-from truthtable.qubo_truthtable import (
+from etc.truthtable.qubo_truthtable import (
     create_qubo_truthtable, create_qubo_approx,
     preset_random_landscape, compute_aux_values,
 )
-from posiform.qubo_posiform import create_qubo_posiform
+from etc.posiform.qubo_posiform import create_qubo_posiform
 from qubo_utils import calculate_energy, save_qubo_edgelist
 
 

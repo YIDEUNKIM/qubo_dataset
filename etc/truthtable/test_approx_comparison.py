@@ -21,7 +21,7 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from truthtable.qubo_truthtable import (
+from etc.truthtable.qubo_truthtable import (
     create_qubo_approx,
     create_qubo_approx_optimized,
     preset_random_landscape,

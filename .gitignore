@@ -6,3 +6,7 @@ __pycache__/
 
 # QPU 인스턴스 pickle은 로컬 전용 (GitHub 100MB 제한 + 재생성 가능)
 hardened_posiform/instances/*.pkl
+
+# Claude Code / IDE 로컬 상태
+.claude/
+anaconda_projects/

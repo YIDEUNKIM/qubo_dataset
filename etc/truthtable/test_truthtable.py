@@ -18,15 +18,11 @@ import neal
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from truthtable.qubo_truthtable import (
+from etc.truthtable.qubo_truthtable import (
     create_qubo_truthtable, create_qubo_approx,
     create_qubo_approx_optimized,
-    preset_random_landscape, preset_multi_valley,
-    compute_aux_values,
-    rosenberg_reduce, rosenberg_reduce_reuse, rosenberg_reduce_greedy,
-    mobius_transform, classify_terms
+    preset_random_landscape, preset_multi_valley
 )
-from qubo_utils import calculate_energy
 
 
 def hamming_distance(a, b):
@@ -234,7 +230,7 @@ def run_comparison(n_bits=5, num_runs=10, num_reads=100, num_sweeps=5000):
 
     # --- 기존 방법론들 (n=8에서 실행 가능한 것만) ---
     try:
-        from zero_expectation.qubo_zero_expectation import create_qubo_precise
+        from etc.zero_expectation.qubo_zero_expectation import create_qubo_precise
         gs_total, samples_total = 0, 0
         t0 = time.time()
         for run in range(num_runs):
@@ -272,7 +268,7 @@ def run_comparison(n_bits=5, num_runs=10, num_reads=100, num_sweeps=5000):
         print(f"  Wishart          | 실패: {e}")
 
     try:
-        from posiform.qubo_posiform import create_qubo_posiform
+        from etc.posiform.qubo_posiform import create_qubo_posiform
         gs_total, samples_total = 0, 0
         t0 = time.time()
         for run in range(num_runs):
