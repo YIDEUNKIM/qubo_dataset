@@ -42,19 +42,35 @@ def build_Q(inst, alpha):
 
 
 def sa_worker(args):
+    """neal SA → exact bit-match egsp + per-read mean HD/ΔE.
+    energy 1e-9 비교는 부동소수점 false negative 양산 → bit-string 매치가 robust.
+    HD/ΔE는 보조 측정 (egsp=0 영역의 valley 구조용).
+    """
     import neal
     try:
         (Q, num_reads, num_sweeps, gs_energy, seed,
-         schedule_type, beta_range) = args
+         schedule_type, beta_range, target_bits) = args
         sampler = neal.SimulatedAnnealingSampler()
         kwargs = dict(num_reads=num_reads, num_sweeps=num_sweeps,
                       seed=seed, beta_schedule_type=schedule_type)
         if beta_range is not None:
             kwargs['beta_range'] = list(beta_range)
         resp = sampler.sample_qubo(Q, **kwargs)
-        es = [d.energy for d in resp.data(['energy'])]
-        egsp = sum(1 for e in es if abs(e - gs_energy) < 1e-9) / num_reads
-        return ('OK', egsp)
+        sorted_nodes = sorted(target_bits.keys())
+        hit = 0
+        hd_sum = 0
+        dE_sum = 0.0
+        for sample, energy in zip(resp.record.sample, resp.record.energy):
+            sample_dict = dict(zip(resp.variables, sample))
+            hd = sum(1 for v in sorted_nodes if sample_dict[v] != target_bits[v])
+            hd_sum += hd
+            dE_sum += float(energy) - float(gs_energy)
+            if hd == 0:
+                hit += 1
+        egsp = hit / num_reads
+        hd_mean = hd_sum / num_reads
+        dE_mean = dE_sum / num_reads
+        return ('OK', egsp, hd_mean, dE_mean)
     except Exception as e:
         return ('ERR', str(e))
 
@@ -86,7 +102,8 @@ def main():
     for i, inst in enumerate(insts):
         Q = build_Q(inst, args.alpha)
         gs_e = inst['t_energy_r'] + args.alpha * inst['t_energy_p']
-        inst_Q_list.append({'idx': i, 'seed': inst['seed'], 'Q': Q, 'gs_e': gs_e})
+        inst_Q_list.append({'idx': i, 'seed': inst['seed'], 'Q': Q, 'gs_e': gs_e,
+                             'target': inst['target']})
 
     # tasks: (inst_idx, sched_idx, args_tuple)
     tasks = []
@@ -94,10 +111,10 @@ def main():
         for si, (stype, br) in enumerate(SCHEDULES):
             seed = (d['seed'] + 1) * 1009 + si * 7919
             tasks.append((d['idx'], si,
-                          (d['Q'], args.num_reads, args.sweeps, d['gs_e'], seed, stype, br)))
+                          (d['Q'], args.num_reads, args.sweeps, d['gs_e'], seed, stype, br, d['target'])))
     print(f"  총 작업: {len(tasks)}")
 
-    results = {}
+    results = {}  # (inst_idx, si) -> (egsp, hd_mean, dE_mean)
     errors = []
     t0 = time.perf_counter()
 
@@ -111,11 +128,11 @@ def main():
         done = 0
         for fut in as_completed(fmap):
             inst_idx, si = fmap[fut]
-            status, value = fut.result()
-            if status == 'OK':
-                results[(inst_idx, si)] = value
+            res = fut.result()
+            if res[0] == 'OK':
+                results[(inst_idx, si)] = (res[1], res[2], res[3])
             else:
-                errors.append((inst_idx, si, value))
+                errors.append((inst_idx, si, res[1]))
             done += 1
             if done % 20 == 0 or done == len(tasks):
                 el = time.perf_counter() - t0
@@ -125,18 +142,26 @@ def main():
     elapsed = time.perf_counter() - t0
     print(f"\n  완료: {elapsed:.1f}s, errors={len(errors)}")
 
-    # 결과 array
-    data_mat = np.zeros((len(SCHEDULES), len(insts)))
+    # 결과 array (egsp / HD / ΔE)
+    data_mat = np.full((len(SCHEDULES), len(insts)), np.nan)
+    hd_mat = np.full((len(SCHEDULES), len(insts)), np.nan)
+    dE_mat = np.full((len(SCHEDULES), len(insts)), np.nan)
     for inst_idx in range(len(insts)):
         for si in range(len(SCHEDULES)):
-            data_mat[si, inst_idx] = results.get((inst_idx, si), np.nan)
+            r = results.get((inst_idx, si))
+            if r is not None:
+                data_mat[si, inst_idx] = r[0]
+                hd_mat[si, inst_idx] = r[1]
+                dE_mat[si, inst_idx] = r[2]
 
-    print(f"\n  schedule별 평균 E-GSP:")
+    print(f"\n  schedule별 평균 E-GSP / HD / ΔE:")
     for si, (stype, br) in enumerate(SCHEDULES):
         m = float(np.nanmean(data_mat[si]))
         s = float(np.nanstd(data_mat[si]))
+        hd_m = float(np.nanmean(hd_mat[si]))
+        dE_m = float(np.nanmean(dE_mat[si]))
         tag = f"{stype}|{'default' if br is None else f'β=({br[0]},{br[1]})'}"
-        print(f"    [{si}] {tag:35s}: mean={m:.4f}, std={s:.4f}")
+        print(f"    [{si}] {tag:35s}: egsp={m:.4f}±{s:.4f}, HD={hd_m:.2f}, ΔE={dE_m:.4g}")
 
     # pairwise ρ
     print(f"\n  schedule간 pairwise ρ:")
@@ -198,13 +223,17 @@ def main():
             'schedules': [(t, list(b) if b else None) for t, b in SCHEDULES],
         },
         'mean_egsp_per_sched': [float(np.nanmean(data_mat[i])) for i in range(len(SCHEDULES))],
+        'mean_hd_per_sched':   [float(np.nanmean(hd_mat[i]))   for i in range(len(SCHEDULES))],
+        'mean_dE_per_sched':   [float(np.nanmean(dE_mat[i]))   for i in range(len(SCHEDULES))],
         'rho_matrix': rho_matrix.tolist(),
         'rho_nonsat_matrix': [[None if np.isnan(v) else float(v)
                                for v in row] for row in rho_nonsat],
         'rho_med_all': float(np.median(all_rhos)) if all_rhos else None,
         'rho_med_nonsat': float(np.median(nonsat_rhos)) if nonsat_rhos else None,
         'verdict': verdict,
-        'data_per_sched': {str(i): data_mat[i].tolist() for i in range(len(SCHEDULES))},
+        'data_per_sched':    {str(i): data_mat[i].tolist() for i in range(len(SCHEDULES))},
+        'data_hd_per_sched': {str(i): hd_mat[i].tolist()   for i in range(len(SCHEDULES))},
+        'data_dE_per_sched': {str(i): dE_mat[i].tolist()   for i in range(len(SCHEDULES))},
         'elapsed_s': elapsed,
     }
     with open(out, 'w') as f:

@@ -40,19 +40,34 @@ def build_Q(inst, alpha):
 
 
 def sa_worker(args):
+    """neal SA → exact bit-match egsp + per-read mean HD/ΔE (부동소수점 안전).
+    HD/ΔE는 egsp=0 영역에서 valley 깊이 진단용 보조 측정.
+    """
     import neal
     try:
         (Q, num_reads, num_sweeps, gs_energy, seed,
-         schedule_type, beta_range) = args
+         schedule_type, beta_range, target_bits) = args
         sampler = neal.SimulatedAnnealingSampler()
         kwargs = dict(num_reads=num_reads, num_sweeps=num_sweeps,
                       seed=seed, beta_schedule_type=schedule_type)
         if beta_range is not None:
             kwargs['beta_range'] = list(beta_range)
         resp = sampler.sample_qubo(Q, **kwargs)
-        es = [d.energy for d in resp.data(['energy'])]
-        egsp = sum(1 for e in es if abs(e - gs_energy) < 1e-9) / num_reads
-        return ('OK', egsp)
+        sorted_nodes = sorted(target_bits.keys())
+        hit = 0
+        hd_sum = 0
+        dE_sum = 0.0
+        for sample, energy in zip(resp.record.sample, resp.record.energy):
+            sample_dict = dict(zip(resp.variables, sample))
+            hd = sum(1 for v in sorted_nodes if sample_dict[v] != target_bits[v])
+            hd_sum += hd
+            dE_sum += float(energy) - float(gs_energy)
+            if hd == 0:
+                hit += 1
+        egsp = hit / num_reads
+        hd_mean = hd_sum / num_reads
+        dE_mean = dE_sum / num_reads
+        return ('OK', egsp, hd_mean, dE_mean)
     except Exception as e:
         return ('ERR', str(e))
 
@@ -82,7 +97,7 @@ def main():
         Q = build_Q(inst, args.alpha)
         gs_e = inst['t_energy_r'] + args.alpha * inst['t_energy_p']
         inst_Q_list.append({'orig_idx': orig_idx, 'seed': inst['seed'],
-                            'Q': Q, 'gs_e': gs_e})
+                            'Q': Q, 'gs_e': gs_e, 'target': inst['target']})
 
     tasks = []
     for d in inst_Q_list:
@@ -90,10 +105,10 @@ def main():
             seed = (d['seed'] + 1) * 1009 + si * 7919 + args.sweeps
             tasks.append((d['orig_idx'], si,
                           (d['Q'], args.num_reads, args.sweeps, d['gs_e'],
-                           seed, stype, br)))
+                           seed, stype, br, d['target'])))
     print(f"  총 작업: {len(tasks)} (= 13 trap × {len(EXTREME_SCHEDULES)} schedules)")
 
-    results = {}
+    results = {}  # (orig_idx, si) -> (egsp, hd_mean, dE_mean)
     t0 = time.perf_counter()
     ctx = mp.get_context('fork') if 'fork' in mp.get_all_start_methods() else None
     pool_kwargs = {'max_workers': args.workers}
@@ -105,9 +120,9 @@ def main():
         done = 0
         for fut in as_completed(fmap):
             orig_idx, si = fmap[fut]
-            status, value = fut.result()
-            if status == 'OK':
-                results[(orig_idx, si)] = value
+            res = fut.result()
+            if res[0] == 'OK':
+                results[(orig_idx, si)] = (res[1], res[2], res[3])
             done += 1
             if done % 10 == 0 or done == len(tasks):
                 el = time.perf_counter() - t0
@@ -118,16 +133,30 @@ def main():
     print(f"\n  완료: {elapsed:.1f}s")
 
     # 결과 표
-    print(f"\n  trap inst × schedule heatmap (E-GSP):")
     sched_labels = [f"{s}|{'def' if br is None else f'β={br[0]},{br[1]}'}" for s, br in EXTREME_SCHEDULES]
+    print(f"\n  trap inst × schedule heatmap (E-GSP):")
     print(f"{'inst':>5} | " + ' '.join(f"{l[:22]:>22}" for l in sched_labels))
     print("-" * (5 + 3 + 23 * len(EXTREME_SCHEDULES)))
     any_solved = {i: False for i in TRAP_INSTS}
     for orig_idx in TRAP_INSTS:
-        row = [results.get((orig_idx, si), float('nan')) for si in range(len(EXTREME_SCHEDULES))]
+        row = [results.get((orig_idx, si), (float('nan'),))[0] for si in range(len(EXTREME_SCHEDULES))]
         if any(v > 0.05 for v in row):
             any_solved[orig_idx] = True
         line = f"{orig_idx:>5} | " + ' '.join(f"{v:>22.4f}" for v in row)
+        print(line)
+
+    # HD / ΔE 표 (보조)
+    print(f"\n  trap inst × schedule (HD mean):")
+    print(f"{'inst':>5} | " + ' '.join(f"{l[:22]:>22}" for l in sched_labels))
+    for orig_idx in TRAP_INSTS:
+        row = [results.get((orig_idx, si), (float('nan'),)*3)[1] for si in range(len(EXTREME_SCHEDULES))]
+        line = f"{orig_idx:>5} | " + ' '.join(f"{v:>22.2f}" for v in row)
+        print(line)
+    print(f"\n  trap inst × schedule (ΔE mean):")
+    print(f"{'inst':>5} | " + ' '.join(f"{l[:22]:>22}" for l in sched_labels))
+    for orig_idx in TRAP_INSTS:
+        row = [results.get((orig_idx, si), (float('nan'),)*3)[2] for si in range(len(EXTREME_SCHEDULES))]
+        line = f"{orig_idx:>5} | " + ' '.join(f"{v:>22.4g}" for v in row)
         print(line)
 
     n_solved = sum(any_solved.values())
@@ -147,8 +176,12 @@ def main():
         'params': {'alpha': args.alpha, 'sweeps': args.sweeps, 'num_reads': args.num_reads,
                    'trap_insts': TRAP_INSTS,
                    'schedules': [(t, list(b) if b else None) for t, b in EXTREME_SCHEDULES]},
-        'results': {f"{i}_{si}": results.get((i, si), None)
+        'results': {f"{i}_{si}": (results[(i, si)][0] if (i, si) in results else None)
                     for i in TRAP_INSTS for si in range(len(EXTREME_SCHEDULES))},
+        'results_hd': {f"{i}_{si}": (results[(i, si)][1] if (i, si) in results else None)
+                       for i in TRAP_INSTS for si in range(len(EXTREME_SCHEDULES))},
+        'results_dE': {f"{i}_{si}": (results[(i, si)][2] if (i, si) in results else None)
+                       for i in TRAP_INSTS for si in range(len(EXTREME_SCHEDULES))},
         'any_solved_per_inst': {str(i): any_solved[i] for i in TRAP_INSTS},
         'n_solved': n_solved,
         'verdict': verdict,

@@ -1,0 +1,85 @@
+% QCE 2026 poster submission -- PAGE 1 (sections 1-4): title, authors+contact,
+% 200-250 word abstract (for website), relevance to QCE topics.
+% Standalone 1-page cover; prepend to main.tex (2pp) + poster.pdf for the package.
+\documentclass[10pt, conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+
+\begin{document}
+
+% --- 1. Poster title ---
+\title{Difficulty Analysis of Posiform-Planted QUBO Benchmarks\\
+via Energy and Hamming Metrics}
+
+% --- 2. Authors + representative contact ---
+\author{
+\IEEEauthorblockN{Yideun Kim}
+\IEEEauthorblockA{
+Department of Computer Engineering\\
+Kangwon National University\\
+Chuncheon, Republic of Korea\\
+Email: rladlems1031@kangwon.ac.kr}
+\and
+\IEEEauthorblockN{Dongjae Lee$^{\dagger}$}
+\IEEEauthorblockA{
+Department of Convergence Security\\
+Kangwon National University\\
+Chuncheon, Republic of Korea\\
+Email: dongjae.lee@kangwon.ac.kr}
+}
+\maketitle
+\renewcommand{\thefootnote}{}
+\footnotetext{$^{\dagger}$Corresponding author and representative contact:
+Dongjae Lee (\texttt{dongjae.lee@kangwon.ac.kr}).}
+\renewcommand{\thefootnote}{\arabic{footnote}}
+
+% --- 3. Abstract (200-250 words, for website posting if accepted) ---
+\begin{abstract}
+Benchmarking quantum annealers and classical optimization heuristics requires
+problem instances whose optimal solution is known in advance, yet that remain
+genuinely hard to solve. Posiform planting is a recent technique that generates
+Quadratic Unconstrained Binary Optimization (QUBO) instances with a single,
+unique planted optimum; a hardened variant raises their difficulty by adding
+random spin-glass terms and scaling the planted component by a coefficient
+$\alpha$. A practical obstacle, however, is measurement: hardness is
+conventionally graded by the ground-state success rate, but across the entire
+hard regime this rate is identically $0\%$, so it cannot distinguish instances,
+solvers, or values of $\alpha$ from one another. This poster presents a
+measurement protocol that restores discrimination in the zero-success regime.
+Instead of asking whether a run succeeded, we quantify how close the failing
+runs come to the planted optimum, using two complementary quantities computed
+over failures only and on a fixed set of the hardest instances: the energy gap
+to the optimum and the Hamming distance from the planted answer. Together they
+convert the flat $0\%$ rate into a continuous, rankable difficulty curve. On
+instances defined over a D-Wave Pegasus graph ($n=5612$ qubits), the curve is
+non-monotone in $\alpha$ -- rising to a distinct peak and then declining -- and
+the same structure reproduces on a D-Wave Advantage quantum annealer,
+indicating that it reflects the benchmark instances rather than any single
+solver. The protocol offers a finer-grained way to grade planted QUBO
+benchmarks.
+\end{abstract}
+
+\begin{IEEEkeywords}
+QUBO benchmarking, quantum annealing, simulated annealing, posiform planting,
+performance evaluation, NISQ, quantum optimization.
+\end{IEEEkeywords}
+
+% --- 4. Relevance to QCE topics ---
+\section*{Poster Relevance to IEEE Quantum Week (QCE 2026)}
+This work addresses the \emph{benchmarking, performance evaluation, and
+verification of programmable quantum annealers} -- core themes of IEEE Quantum
+Week. Its subject is the QUBO problem, the native input format of D-Wave
+quantum annealers and a central model for quantum and quantum-inspired
+optimization. The proposed failure-conditioned metrics target the NISQ-era
+regime in which solvers seldom reach the true ground state and a binary success
+rate is uninformative, yet still rank instances, solvers, and a
+hardware-relevant tunable difficulty parameter. The study spans both classical
+(simulated annealing) and quantum (D-Wave Advantage) solvers under a common
+measure, supporting cross-platform comparison. It thus connects to QCE topics
+in (i)~quantum benchmarking and performance characterization, (ii)~quantum
+annealing and optimization, and (iii)~reproducible evaluation methodology and
+tooling for quantum hardware. All code and benchmark instances are released
+openly (\texttt{github.com/YIDEUNKIM/qubo\_dataset}) to support reproducibility.
+
+\end{document}

@@ -1,0 +1,127 @@
+{
+  "params": {
+    "alpha": 0.01,
+    "inst": 5,
+    "num_reads": 20,
+    "configs": [
+      [
+        "SA_sw10000",
+        "sa",
+        {
+          "num_sweeps": 10000
+        }
+      ],
+      [
+        "SA_sw100000",
+        "sa",
+        {
+          "num_sweeps": 100000
+        }
+      ],
+      [
+        "Tabu_1s",
+        "tabu",
+        {
+          "timeout_ms": 1000
+        }
+      ],
+      [
+        "Tabu_5s",
+        "tabu",
+        {
+          "timeout_ms": 5000
+        }
+      ],
+      [
+        "Tabu_20s",
+        "tabu",
+        {
+          "timeout_ms": 20000
+        }
+      ],
+      [
+        "Greedy",
+        "greedy",
+        {}
+      ]
+    ]
+  },
+  "mean_egsp_per_config": {
+    "SA_sw10000": 0.12,
+    "SA_sw100000": 0.4,
+    "Tabu_1s": 0.0,
+    "Tabu_5s": 0.0,
+    "Tabu_20s": 0.0,
+    "Greedy": 0.0
+  },
+  "std_per_config": {
+    "SA_sw10000": 0.12884098726725124,
+    "SA_sw100000": 0.34058772731852804,
+    "Tabu_1s": 0.0,
+    "Tabu_5s": 0.0,
+    "Tabu_20s": 0.0,
+    "Greedy": 0.0
+  },
+  "n_solved_per_config": {
+    "SA_sw10000": 0,
+    "SA_sw100000": 2,
+    "Tabu_1s": 0,
+    "Tabu_5s": 0,
+    "Tabu_20s": 0,
+    "Greedy": 0
+  },
+  "elapsed_per_config": {
+    "SA_sw10000": 2.6728486560168676,
+    "SA_sw100000": 24.069925536983646,
+    "Tabu_1s": 37.93978253996465,
+    "Tabu_5s": 110.84432027599541,
+    "Tabu_20s": 410.27214964601444,
+    "Greedy": 0.6622813870199025
+  },
+  "per_inst_per_config": {
+    "SA_sw10000": [
+      0.0,
+      0.3,
+      0.0,
+      0.05,
+      0.25
+    ],
+    "SA_sw100000": [
+      0.05,
+      0.75,
+      0.05,
+      0.3,
+      0.85
+    ],
+    "Tabu_1s": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "Tabu_5s": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "Tabu_20s": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "Greedy": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "alt_better_insts": [],
+  "verdict": "V3_INSTANCE_INTRINSIC \u2014 SA\uac00 \ub300\uccb4 \uc54c\uace0\ub9ac\uc998\ubcf4\ub2e4 \ub354 \uc798 \ud480\uc74c. V3\ub294 instance\uac00 hardware-specific \ub610\ub294 SA-favorable."
+}

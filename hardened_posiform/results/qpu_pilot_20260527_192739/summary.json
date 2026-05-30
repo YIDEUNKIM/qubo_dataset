@@ -1,0 +1,55 @@
+{
+  "solver": "Advantage_system6.4",
+  "n_inst": 8,
+  "alphas": [
+    0.0,
+    0.001,
+    0.003,
+    0.005,
+    0.01,
+    0.02
+  ],
+  "num_reads": 100,
+  "anneal_us": 20,
+  "gauges": 2,
+  "cmax": 1.56,
+  "alpha_star_approx": 0.003,
+  "rows": {
+    "0": {
+      "fail_rate": 1.0,
+      "n_wrong": 800,
+      "wrong_dE": 26.435,
+      "wrong_HD": 497.32875
+    },
+    "0.001": {
+      "fail_rate": 1.0,
+      "n_wrong": 800,
+      "wrong_dE": 28.150631249639947,
+      "wrong_HD": 470.0375
+    },
+    "0.003": {
+      "fail_rate": 1.0,
+      "n_wrong": 800,
+      "wrong_dE": 34.78274624997914,
+      "wrong_HD": 422.79625
+    },
+    "0.005": {
+      "fail_rate": 1.0,
+      "n_wrong": 800,
+      "wrong_dE": 38.79888749942071,
+      "wrong_HD": 377.9675
+    },
+    "0.01": {
+      "fail_rate": 1.0,
+      "n_wrong": 800,
+      "wrong_dE": 43.46542499945465,
+      "wrong_HD": 281.80375
+    },
+    "0.02": {
+      "fail_rate": 1.0,
+      "n_wrong": 800,
+      "wrong_dE": 42.869099999488824,
+      "wrong_HD": 167.12625
+    }
+  }
+}

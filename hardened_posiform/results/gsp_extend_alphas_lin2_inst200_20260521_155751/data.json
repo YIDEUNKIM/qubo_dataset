@@ -1,0 +1,61 @@
+{
+  "params": {
+    "topology": "pegasus",
+    "topo_size": 16,
+    "coeff": "lin2",
+    "num_instances": 200,
+    "num_reads": 100,
+    "fixed_sweep": 1000,
+    "alphas": [
+      0.02,
+      0.04,
+      0.07
+    ],
+    "elapsed_s": 107.39657973800786,
+    "n": 5612
+  },
+  "results": {
+    "0.02": {
+      "gsp_eng": 0.25455,
+      "gsp_bit": 0.25455,
+      "gsp_gs": 0.25455,
+      "eng_ok": 5091,
+      "bit_ok": 5091,
+      "gs_ok": 5091,
+      "hd_sum": 135562,
+      "avg_hd": 6.7781,
+      "dE_sum": 27789.69995164594,
+      "avg_dE": 1.389484997582297,
+      "total": 20000,
+      "eng_found": 5091
+    },
+    "0.04": {
+      "gsp_eng": 0.8832,
+      "gsp_bit": 0.8832,
+      "gsp_gs": 0.8832,
+      "eng_ok": 17664,
+      "bit_ok": 17664,
+      "gs_ok": 17664,
+      "hd_sum": 9720,
+      "avg_hd": 0.486,
+      "dE_sum": 2838.919950867573,
+      "avg_dE": 0.14194599754337864,
+      "total": 20000,
+      "eng_found": 17664
+    },
+    "0.07": {
+      "gsp_eng": 0.99215,
+      "gsp_bit": 0.99215,
+      "gsp_gs": 0.99215,
+      "eng_ok": 19843,
+      "bit_ok": 19843,
+      "gs_ok": 19843,
+      "hd_sum": 514,
+      "avg_hd": 0.0257,
+      "dE_sum": 151.50005324670656,
+      "avg_dE": 0.007575002662335328,
+      "total": 20000,
+      "eng_found": 19843
+    }
+  }
+}

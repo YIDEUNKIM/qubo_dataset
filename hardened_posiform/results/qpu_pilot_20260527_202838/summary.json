@@ -1,0 +1,103 @@
+{
+  "solver": "Advantage_system6.4",
+  "n_inst": 30,
+  "alphas": [
+    0.0,
+    1e-09,
+    1e-05,
+    0.0001,
+    0.001,
+    0.003,
+    0.005,
+    0.01,
+    0.015,
+    0.02
+  ],
+  "num_reads": 100,
+  "anneal_us": 20,
+  "gauges": 2,
+  "cmax": 1.56,
+  "alpha_star_approx": 0.003,
+  "rows": {
+    "0": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 25.302333333333333,
+      "wrong_dE_med": 25.0,
+      "wrong_HD": 496.856,
+      "wrong_HD_med": 496.0
+    },
+    "1e-09": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 25.746671804929544,
+      "wrong_dE_med": 25.00000575662716,
+      "wrong_HD": 498.41866666666664,
+      "wrong_HD_med": 498.0
+    },
+    "1e-05": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 24.67581317983527,
+      "wrong_dE_med": 24.051974999835238,
+      "wrong_HD": 496.003,
+      "wrong_HD_med": 496.0
+    },
+    "0.0001": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 25.48692413300013,
+      "wrong_dE_med": 25.442949999638586,
+      "wrong_HD": 493.79533333333336,
+      "wrong_HD_med": 492.0
+    },
+    "0.001": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 29.56639766630846,
+      "wrong_dE_med": 29.45949999965569,
+      "wrong_HD": 474.98,
+      "wrong_HD_med": 474.0
+    },
+    "0.003": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 34.268569999976066,
+      "wrong_dE_med": 34.16499999996677,
+      "wrong_HD": 427.101,
+      "wrong_HD_med": 426.0
+    },
+    "0.005": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 38.84652833276384,
+      "wrong_dE_med": 38.609999999444426,
+      "wrong_HD": 382.059,
+      "wrong_HD_med": 382.5
+    },
+    "0.01": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 43.957176666121775,
+      "wrong_dE_med": 43.71499999945581,
+      "wrong_HD": 289.4513333333333,
+      "wrong_HD_med": 289.0
+    },
+    "0.015": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 43.55775666645689,
+      "wrong_dE_med": 43.302499999814245,
+      "wrong_HD": 218.45466666666667,
+      "wrong_HD_med": 218.0
+    },
+    "0.02": {
+      "fail_rate": 1.0,
+      "n_wrong": 3000,
+      "wrong_dE": 41.990246666174635,
+      "wrong_dE_med": 41.67999999947415,
+      "wrong_HD": 169.866,
+      "wrong_HD_med": 170.0
+    }
+  }
+}

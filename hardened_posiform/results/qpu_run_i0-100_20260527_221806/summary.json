@@ -1,0 +1,106 @@
+{
+  "solver": "Advantage_system6.4",
+  "inst_range": [
+    0,
+    100
+  ],
+  "alphas": [
+    0.0,
+    1e-09,
+    1e-05,
+    0.0001,
+    0.001,
+    0.003,
+    0.005,
+    0.01,
+    0.015,
+    0.02
+  ],
+  "num_reads": 100,
+  "anneal_us": 20,
+  "gauges": 2,
+  "scale_mode": "auto",
+  "scale": null,
+  "rows": {
+    "0": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 24.2804,
+      "wrong_dE_med": 24.0,
+      "wrong_HD": 501.0277,
+      "wrong_HD_med": 501.0
+    },
+    "1e-09": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 23.8520053636898,
+      "wrong_dE_med": 23.000006334,
+      "wrong_HD": 499.7937,
+      "wrong_HD_med": 500.0
+    },
+    "1e-05": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 23.724436174,
+      "wrong_dE_med": 23.05467,
+      "wrong_HD": 498.8326,
+      "wrong_HD_med": 499.0
+    },
+    "0.0001": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 24.242343090000002,
+      "wrong_dE_med": 24.44405,
+      "wrong_HD": 496.9848,
+      "wrong_HD_med": 497.0
+    },
+    "0.001": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 27.013563899999998,
+      "wrong_dE_med": 26.75,
+      "wrong_HD": 474.5104,
+      "wrong_HD_med": 475.0
+    },
+    "0.003": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 33.250715400000004,
+      "wrong_dE_med": 32.8335,
+      "wrong_HD": 427.1568,
+      "wrong_HD_med": 427.0
+    },
+    "0.005": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 37.184110499999996,
+      "wrong_dE_med": 37.045,
+      "wrong_HD": 380.8539,
+      "wrong_HD_med": 381.0
+    },
+    "0.01": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 42.880116,
+      "wrong_dE_med": 42.785,
+      "wrong_HD": 285.8771,
+      "wrong_HD_med": 286.0
+    },
+    "0.015": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 43.544831,
+      "wrong_dE_med": 43.1,
+      "wrong_HD": 216.103,
+      "wrong_HD_med": 216.0
+    },
+    "0.02": {
+      "fail_rate": 1.0,
+      "n_wrong": 10000,
+      "wrong_dE": 42.046195999999995,
+      "wrong_dE_med": 41.74,
+      "wrong_HD": 167.0598,
+      "wrong_HD_med": 167.0
+    }
+  }
+}
