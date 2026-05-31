@@ -1,6 +1,6 @@
 """SA vs QPU overlay. QPU는 results/qpu_run_i*/ 의 모든 단계를 합쳐(오답만) 집계.
 (qpu_run_* 없으면 qpu_pilot_* 로 fallback.) → ieee_paper_2page/figures/fig_sa_vs_qpu.{png,pdf}
-ΔE는 스케일 차로 이중 y축, HD는 공통 로그축.
+ΔE는 각 솔버의 작은 α floor로 정규화해 공통 단일축, HD는 공통 로그축.
 """
 import os, glob, csv
 from collections import defaultdict
@@ -57,14 +57,22 @@ axH.legend(fontsize=6, loc='lower left', ncol=2, markerscale=0.8,
            handlelength=1.2, handletextpad=0.4, columnspacing=0.8, borderpad=0.3)
 axH.tick_params(labelsize=8)
 
-axE.plot(x, sE, 's--', color=BLUE, ms=4, lw=1.4)
-axE.set_ylim(0, 3.6); axE.set_yticks([0, 1, 2, 3]); axE.set_ylabel(r'SA  $\Delta E$', fontsize=9)
-axE.tick_params(axis='y', labelsize=8)
-ax2 = axE.twinx()
-ax2.plot(x, qE, 'o-', color=RED, ms=4, lw=1.4)
-ax2.set_ylim(22, 46); ax2.set_yticks([25, 35, 45]); ax2.set_ylabel(r'QPU  $\Delta E$', fontsize=9)
-ax2.tick_params(axis='y', labelsize=8)
-axE.set_title(r'(b) $\Delta E$ (mean)', fontsize=9)
+# ΔE를 각 솔버의 작은 α floor(평탄구간 α∈[1e-9,1e-4] 평균; α=0은 축퇴라 제외)로
+# 정규화 → 공통 단일축. floor 대비 정점비가 데이터로 결정되어 모양 비교가 정직.
+plat = [i for i, a in enumerate(alphas) if 1e-9 <= a <= 1e-4]
+saf = float(np.mean([sE[i] for i in plat])); qpf = float(np.mean([qE[i] for i in plat]))
+sEn = np.asarray(sE) / saf; qEn = np.asarray(qE) / qpf
+print(f'floor: SA={saf:.3f}  QPU={qpf:.3f}  | peak: SA={sEn.max():.2f}x  QPU={qEn.max():.2f}x')
+axE.axhline(1.0, color='gray', ls=':', lw=0.8)
+axE.plot(x, sEn, 's--', color=BLUE, ms=4, lw=1.4)
+axE.plot(x, qEn, 'o-', color=RED, ms=4, lw=1.4)
+axE.set_ylim(0.4, 3.3); axE.set_yticks([1, 2, 3]); axE.set_ylabel(r'$\Delta E$ / floor', fontsize=9)
+i1 = int(np.argmax(sEn)); i2 = int(np.argmax(qEn))
+axE.annotate(f'{sEn[i1]:.1f}' + r'$\times$', (x[i1], sEn[i1]), textcoords='offset points',
+             xytext=(0, 3), fontsize=7, color=BLUE, ha='center')
+axE.annotate(f'{qEn[i2]:.1f}' + r'$\times$', (x[i2], qEn[i2]), textcoords='offset points',
+             xytext=(2, 4), fontsize=7, color=RED, ha='left')
+axE.set_title(r'(b) $\Delta E$ / floor (mean)', fontsize=9)
 axE.set_xticks(x); axE.set_xticklabels(lab, rotation=45, fontsize=8)
 axE.set_xlabel(r'$\alpha$', fontsize=9); axE.grid(alpha=0.3); axE.tick_params(labelsize=8)
 

@@ -120,11 +120,9 @@ D-Wave Pegasus P16 graph~\cite{boothby2020} ($n{=}5612$ qubits) with
 splits the graph into $\leq16$-qubit blocks, each $R_i$ solved exactly. The planted target $x^\star$
 -- the concatenation of the block ground states -- is the global minimum of
 $\sum_i R_i$; $P$ is the posiform of a planted 2-SAT with unique solution
-$x^\star$. For the
-difficulty analysis we rank the $500$ instances by their total failing-read
-count under SA across the $\alpha$-sweep and fix the hardest $100$ as a
-constant set -- selected from SA alone, before any QPU run, so the
-cross-solver agreement below is not circular -- then run both solvers on it.
+$x^\star$. We rank the $500$ by total SA failing-reads across the sweep and fix the
+hardest $100$ as a constant set -- chosen from SA alone before any QPU run, so
+the cross-solver agreement is not circular -- then run both solvers on it.
 
 \textbf{Metrics and flags.} Per sample $x$ we record
 HD$(x,x^\star)$~\cite{hamming1950} and the energy gap
@@ -133,7 +131,10 @@ every $R$ energy is integer, so we report $\Delta E$ in units of the
 minimal non-degenerate $R$ gap ($\Delta_R{=}1$), comparable across
 instances, as is HD$/n$. At $\alpha{=}0$, $x^\star$ is one of many $R$ ground
 states, so an energy match ($|\Delta E|<10^{-7}$) need not be a bit match; for
-$\alpha{>}0$ it is unique. Since correct samples ($\Delta E{\approx}0$, HD${=}0$)
+$\alpha{>}0$ it is unique. We score a read as a \emph{success} only on a bit-match
+($x{=}x^\star$); the $0\%$ success rate and the per-read failure rate use this
+criterion, not the (at $\alpha{=}0$ degenerate) ground-state energy. Since
+correct samples ($\Delta E{\approx}0$, HD${=}0$)
 drive both quantities to $0$ at large $\alpha$, all statistics below are
 \emph{conditional on failure} ($x{\neq}x^\star$). Means are over failing reads;
 the instance-level standard error stays below $0.06\,\Delta_R$ (error bars omitted).
@@ -156,9 +157,11 @@ averaging, and $100$ reads at $20\,\mu$s; $\Delta E$ is recomputed from $Q_\alph
 \caption{Failure-conditioned difficulty over the $100$ hardest instances
 (each $\alpha$: $\geq91\%$ of reads fail). Blue: SA; red: a D-Wave Advantage
 annealer. (a)~HD (log axis) descends monotonically but never reaches $0$.
-(b)~$\Delta E$ on split axes (SA left, QPU right): a flat $\Delta_R$ floor
-($\approx1.1$), then a non-monotone peak ($3.35$) near $\alpha{=}10^{-2}$; the
-annealer shows the same shape on an order-of-magnitude larger baseline.}
+(b)~$\Delta E$ rescaled by each solver's small-$\alpha$ floor (SA
+$\approx1.1\,\Delta_R$, QPU $\approx24$) onto one axis: both start at $1$; SA
+rises to a non-monotone peak of $3.0\times$ near $\alpha{=}10^{-2}$ then
+declines, the annealer reproducing the same qualitative shape but more weakly
+($1.8\times$).}
 \label{fig:traj}
 \end{figure}
 
@@ -176,22 +179,22 @@ planted term becomes significant and $\Delta E$ rises to a
 $\Delta_R$ floor -- then declines to $2.16$; floor, peak, and decline separate
 by far more than the instance-level SE ($<0.06\,\Delta_R$). HD meanwhile
 decreases monotonically ($73\to11$): failing samples move closer to $x^\star$
-in HD even as their energy gap grows -- opposite trends on the same samples. The peak follows
-from $\Delta E{=}\Delta R{+}\alpha\Delta P$: $\Delta R,\Delta P$ are
-per-bitstring constants, so as failures move toward $x^\star$ their $\Delta P$
-falls and $\Delta E$ peaks where rising $\alpha$ stops outpacing it. The
+in HD even as their energy gap grows -- opposite trends on the same samples. The peak follows from $\Delta E{=}\Delta R{+}\alpha\Delta P$ with $\Delta R,\Delta P$
+per-bitstring constants: as failures near $x^\star$, $\Delta P$ falls, so $\Delta E$
+peaks where rising $\alpha$ stops outpacing it. The
 peak is neither a survivorship nor a
 selection artifact: the $100$ instances fail $\geq91\%$ of reads at every
 $\alpha$ ($0\%$ ground-state success, as~\cite{pelofske2024hardened} report),
 and the same non-monotone shape appears over all $500$ instances (floor
 ${\approx}1.1$, peak ${\approx}3.0$), the hardest set only sharpening it.
 
-\subsection{Quantum-annealer validation}
+\subsection{Quantum-annealer consistency check}
 \label{sec:qpu}
 As supporting evidence, a single run of the same $100$ instances on a D-Wave
 Advantage annealer (Fig.~\ref{fig:traj}, red) reproduces the qualitative
-pattern -- $0\%$ success, a non-monotone $\Delta E$ peak near $\alpha{=}10^{-2}$,
-and monotonic HD decrease ($501\to167$) -- on baselines an order of magnitude
+pattern -- $0\%$ success, a non-monotone $\Delta E$ peak near $\alpha{=}10^{-2}$
+(weaker in relative terms, $1.8\times$ its floor vs SA's $3.0\times$), and
+monotonic HD decrease ($501\to167$) -- on baselines an order of magnitude
 above SA's ($\Delta E\approx24$, HD$\approx500$). One run cannot establish
 generality but is consistent with the structure being an instance property,
 not SA-specific. The peak's couplers map to Ising
@@ -204,14 +207,15 @@ Failure-conditioned $\Delta E$ diagnoses difficulty (local-minimum depth) and
 HD diagnoses proximity to $x^\star$, so reporting both separates how
 \emph{deep} a failure is from how \emph{close} it is. The all-sample mean
 (the success rate) obscures the peak, falling at larger $\alpha$ only because
-more reads succeed, not because the remaining failures are shallower. $\Delta E$ also separates solvers the success rate cannot: on $150$
-instances at $\alpha{=}10^{-3}$, $1000$ vs.\ $5000$ SA sweeps (both $0\%$
-success) give $\Delta E$ $1.68$ vs.\ $1.00$. Because the curve persists across
+more reads succeed, not because the remaining failures are shallower. $\Delta E$ also separates solvers the success rate cannot: on a separate
+$150$-instance subset (not the hardest-$100$ set above) at $\alpha{=}10^{-3}$,
+$1000$ vs.\ $5000$ SA sweeps (both $0\%$ success) give $\Delta E$ $1.68$
+vs.\ $1.00$. Because the curve persists across
 SA budgets and is echoed by the supporting QPU run, we recommend reporting
 failure-conditioned $\Delta E$ (floor and peak) with HD over a fixed hardest
-set whenever an $\alpha$-like parameter is swept; this aims to characterize the
-benchmark instances, though absolute values remain solver- and
-schedule-dependent.
+set whenever an $\alpha$-like parameter is swept; this provides a failure-conditioned diagnostic of
+the benchmark instances -- not a single difficulty score -- though absolute
+values remain solver- and schedule-dependent.
 
 \textbf{Limitations.} The QPU evidence is a single run (two gauges, one
 $20\,\mu$s anneal); the classical side is a single SA family, and instances use
@@ -229,20 +233,17 @@ HD--$\Delta E$ analysis. Code and instances:
 \bibitem{hahn2023posiform}
 G.~Hahn, E.~Pelofske, and H.~N.~Djidjev,
 ``Posiform planting: generating QUBO instances for benchmarking,''
-\emph{Frontiers in Computer Science}, vol.~5, Art.~no.~1275948, 2023,
-doi:~\url{10.3389/fcomp.2023.1275948}.
+\emph{Frontiers in Computer Science}, vol.~5, Art.~no.~1275948, 2023.
 
 \bibitem{kirkpatrick1983}
 S.~Kirkpatrick, C.~D.~Gelatt~Jr., and M.~P.~Vecchi,
 ``Optimization by simulated annealing,''
-\emph{Science}, vol.~220, no.~4598, pp.~671--680, May 1983,
-doi:~\url{10.1126/science.220.4598.671}.
+\emph{Science}, vol.~220, no.~4598, pp.~671--680, 1983.
 
 \bibitem{pelofske2024hardened}
 E.~Pelofske, G.~Hahn, and H.~N.~Djidjev,
 ``Increasing the hardness of posiform planting using random QUBOs for programmable quantum annealer benchmarking,''
-\emph{npj Unconventional Computing}, vol.~2, Art.~no.~17, 2025,
-doi:~\url{10.1038/s44335-025-00032-6}.
+\emph{npj Unconventional Computing}, vol.~2, Art.~no.~17, 2025.
 
 \bibitem{boothby2020}
 K.~Boothby, P.~Bunyk, J.~Raymond, and A.~Roy,
@@ -251,13 +252,11 @@ arXiv:2003.00133, 2020.
 
 \bibitem{hamming1950}
 R.~W.~Hamming, ``Error detecting and error correcting codes,''
-\emph{Bell System Technical Journal}, vol.~29, no.~2, pp.~147--160, Apr.~1950,
-doi:~\url{10.1002/j.1538-7305.1950.tb00463.x}.
+\emph{Bell Syst. Tech. J.}, vol.~29, no.~2, pp.~147--160, 1950.
 
 \bibitem{neal}
-D-Wave Systems Inc., ``dwave-neal: An implementation of a simulated annealing
-sampler,'' GitHub repository, 2022. [Online]. Available:
-\url{https://github.com/dwavesystems/dwave-neal}. Accessed: May~29, 2026.
+D-Wave Systems Inc., ``dwave-neal: a simulated annealing sampler,'' GitHub,
+2022. \url{https://github.com/dwavesystems/dwave-neal}.
 
 \end{thebibliography}
 

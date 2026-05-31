@@ -38,7 +38,7 @@ Dongjae Lee (\texttt{dongjae.lee@kangwon.ac.kr}).}
 \begin{abstract}
 Benchmarking quantum annealers and classical optimization heuristics requires
 problem instances whose optimal solution is known in advance, yet that remain
-genuinely hard to solve. Posiform planting is a recent technique that generates
+genuinely hard to solve. Posiform planting generates
 Quadratic Unconstrained Binary Optimization (QUBO) instances with a single,
 unique planted optimum; a hardened variant raises their difficulty by adding
 random spin-glass terms and scaling the planted component by a coefficient
@@ -53,11 +53,11 @@ over failures only and on a fixed set of the hardest instances: the energy gap
 to the optimum and the Hamming distance from the planted answer. Together they
 convert the flat $0\%$ rate into a continuous, rankable difficulty curve. On
 instances defined over a D-Wave Pegasus graph ($n=5612$ qubits), the curve is
-non-monotone in $\alpha$ -- rising to a distinct peak and then declining -- and
-the same structure reproduces on a D-Wave Advantage quantum annealer,
-indicating that it reflects the benchmark instances rather than any single
-solver. The protocol offers a finer-grained way to grade planted QUBO
-benchmarks.
+non-monotone in $\alpha$ -- rising to a distinct peak and then declining. A
+single supporting run on a D-Wave Advantage annealer reproduces the same shape,
+more weakly, consistent with the structure reflecting the instances rather than
+simulated annealing alone. The protocol offers a finer-grained way to grade
+planted QUBO benchmarks.
 \end{abstract}
 
 \begin{IEEEkeywords}

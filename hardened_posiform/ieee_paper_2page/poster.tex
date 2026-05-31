@@ -155,7 +155,7 @@ $\displaystyle Q_{\alpha}(x) \;=\; \sum_{i} R_i(x) \;+\; \alpha\,P(x)$
 \end{center}
 \vskip0.4cm
 \begin{itemize}
-  \item Hardness is graded by the \textbf{ground-state success rate}.
+  \item Hardness is graded by the \textbf{ground-state success rate} (success $=$ the exact planted $\xstar$, not merely ground-state energy).
   \item But across the whole hard regime that rate is \hl{identically $0\%$}.
   \cimp It \textbf{cannot rank} instances, solvers, or $\alpha$ \emph{within} the hard regime --- the benchmark loses its purpose.
 \end{itemize}
@@ -169,7 +169,7 @@ Instead of ``did it succeed?'', ask \emph{how close the failing runs come} to $\
   \item \qpucol{Hamming distance} $\mathrm{HD}(x,\xstar)$ --- bit-distance to the answer.
 \end{itemize}
 \vskip0.3cm
-These turn the flat $0\%$ into a \textbf{continuous, rankable difficulty curve}. Neither quantity is new --- the \textbf{contribution is the protocol}: failure-conditioning on a fixed hardest set, validated on real hardware.
+These turn the flat $0\%$ into a \textbf{continuous, rankable difficulty curve}. Neither quantity is new --- the \textbf{contribution is the protocol}: failure-conditioning on a fixed hardest set, cross-checked on real hardware.
 \end{block}
 
 \begin{block}{\bnum{3}Methodology}
@@ -180,7 +180,7 @@ These turn the flat $0\%$ into a \textbf{continuous, rankable difficulty curve}.
 \vskip0.35cm
 \lab{Metrics.} \texttt{lin2} $\Rightarrow$ integer $R$ energies $\Rightarrow$ report $\Delta E$ in units of the minimal $R$-gap $\Delta_R{=}1$ (comparable across instances). All statistics are \textbf{conditional on failure} ($x\neq\xstar$).
 \vskip0.35cm
-\lab{Protocol.} \texttt{neal} SA, $1000$ sweeps, $100$ reads / (instance,\,$\alpha$). Cross-check: same $100$ instances on a \textbf{D-Wave Advantage} annealer --- hardware-native, auto-scale, two-gauge, $100$ reads $\times\,20\,\mu$s.
+\lab{Protocol.} \texttt{neal} SA package, $1000$ sweeps, $100$ reads / (instance,\,$\alpha$). Cross-check: same $100$ instances on a \textbf{D-Wave Advantage} annealer --- hardware-native, auto-scale, two-gauge, $100$ reads $\times\,20\,\mu$s.
 \end{block}
 
 \end{column}
@@ -220,7 +220,7 @@ Failure-conditioned $\Delta E$ traces $\Delta E = \Delta R + \alpha\,\Delta P$ d
 
 \begin{alertblock}{\bnum{6}$\Delta E$ ranks what the success rate cannot}
 \RaggedRight
-Two SA budgets ($1000$ vs.\ $5000$ sweeps) both reach $0\%$ success in the small-$\alpha$ region, yet mean $\Delta E$ \textbf{separates them} --- at $\alpha{=}10^{-3}$: \textbf{$1.68$ vs.\ $1.00$}. The success rate is blind here; $\Delta E$ is not.
+Two SA budgets ($1000$ vs.\ $5000$ sweeps) both reach $0\%$ success in the small-$\alpha$ region, yet mean $\Delta E$ \textbf{separates them} --- at $\alpha{=}10^{-3}$ (a separate $150$-instance subset): \textbf{$1.68$ vs.\ $1.00$}. The success rate is blind here; $\Delta E$ is not.
 \end{alertblock}
 
 \end{column}
@@ -233,7 +233,7 @@ Two SA budgets ($1000$ vs.\ $5000$ sweeps) both reach $0\%$ success in the small
 \centering
 \includegraphics[width=0.99\onecolwid]{figures/fig_sa_vs_qpu.pdf}
 \RaggedRight\vskip0.3cm
-{\normalsize Same $100$ hardest instances (each $\alpha$: $\ge 91\%$ of reads fail in aggregate). \sacol{Blue}: SA; \qpucol{red}: D-Wave Advantage. \textbf{(a)}~HD (log axis) decreases monotonically yet never reaches $0$. \textbf{(b)}~$\Delta E=\Delta R+\alpha\Delta P$ (split axes, left SA / right QPU): a flat $\Delta_R$ floor, then a non-monotone peak near $\alpha{=}10^{-2}$. The annealer reproduces the same qualitative shape on an order-of-magnitude larger baseline.}
+{\normalsize Same $100$ hardest instances (each $\alpha$: $\ge 91\%$ of reads fail in aggregate). \sacol{Blue}: SA; \qpucol{red}: D-Wave Advantage. \textbf{(a)}~HD (log axis) decreases monotonically yet never reaches $0$. \textbf{(b)}~$\Delta E$ rescaled by each solver's small-$\alpha$ floor onto one axis: both start at $1$; SA rises to a non-monotone $3.0\times$ peak near $\alpha{=}10^{-2}$, the annealer reproducing the same shape more weakly ($1.8\times$).}
 \end{block}
 
 \begin{block}{\bnum{8}Table 1 --- Wrong-only means ($\Delta E$ in $\Delta_R$ units)}
@@ -261,12 +261,12 @@ $1.5\times10^{-2}$ & 18.4 & 216.1 & 2.79 & \hl{43.5} \\
 {\normalsize Peak $\Delta E$ in \hl{orange}. SA: aggregate failure $\ge 91\%$ at every $\alpha$; QPU: $0\%$ success at every $\alpha$.}
 \end{block}
 
-\begin{block}{\bnum{9}Quantum-annealer validation}
+\begin{block}{\bnum{9}Quantum-annealer consistency check}
 \RaggedRight
-Re-running the same $100$ instances on \textbf{D-Wave Advantage} gives $0\%$ success at every $\alpha$, yet the \textbf{same qualitative pattern}: a non-monotone $\Delta E$ peak near $\alpha{=}10^{-2}$ and HD decreasing monotonically (\qpucol{$501\to167$}).
+As \textbf{supporting evidence}, a \emph{single} run of the same $100$ instances on \textbf{D-Wave Advantage} gives $0\%$ success at every $\alpha$, yet the \textbf{same qualitative pattern}: a non-monotone $\Delta E$ peak near $\alpha{=}10^{-2}$ (weaker, $1.8\times$ vs $3.0\times$) and HD decreasing monotonically (\qpucol{$501\to167$}).
 \begin{itemize}
-  \item Baselines an order of magnitude above SA ($\Delta E\approx 24$ vs.\ $1$) $\Rightarrow$ the effect is \textbf{not solely an SA artifact}.
-  \item \lab{Precision floor.} Peak couplers map to Ising $J\approx 0.03$, near the scale where integrated control errors (ICE) matter; shrinking the problem scale drops them below ICE and \textbf{erases the peak}.
+  \item Baselines an order of magnitude above SA ($\Delta E\approx 24$ vs.\ $1$) $\Rightarrow$ \textbf{consistent with an instance property, not SA-specific} (one run cannot prove generality).
+  \item \lab{Precision floor.} Peak couplers map to Ising $J\approx 0.03$, near the scale where integrated control errors (ICE) matter; we \emph{hypothesize} that a smaller problem scale would push them below ICE and \textbf{flatten the peak} --- left to future verification.
 \end{itemize}
 \end{block}
 
@@ -281,7 +281,7 @@ Re-running the same $100$ instances on \textbf{D-Wave Advantage} gives $0\%$ suc
 \begin{column}{\fullwid}
 \begin{block}{\bnum{10}Conclusion}
 \RaggedRight\large
-Failure-conditioned \sacol{$\Delta E$} is the difficulty diagnostic and \qpucol{HD} its complement --- the all-sample mean (hence the success rate) hides the peak, falling at large $\alpha$ only because more reads succeed while the remaining failures stay deep. Whenever an $\alpha$-like hardness parameter is swept, we recommend reporting \textbf{failure-conditioned $\Delta E$ (floor \& peak) together with HD over a fixed set of hardest instances}. Because the curve appears on \emph{both} SA and a quantum annealer, it characterizes \textbf{structure of the benchmark instances}, though absolute values remain solver- and schedule-dependent.
+Failure-conditioned \sacol{$\Delta E$} is the difficulty diagnostic and \qpucol{HD} its complement --- the all-sample mean (hence the success rate) hides the peak, falling at large $\alpha$ only because more reads succeed while the remaining failures stay deep. Whenever an $\alpha$-like hardness parameter is swept, we recommend reporting \textbf{failure-conditioned $\Delta E$ (floor \& peak) together with HD over a fixed set of hardest instances}. Because the curve persists across SA budgets and is echoed by a supporting quantum-annealer run, it provides a failure-conditioned \emph{diagnostic} of the benchmark instances rather than a single difficulty score, though absolute values remain solver- and schedule-dependent.
 \end{block}
 \end{column}
 \begin{column}{\sepwid}\end{column}
