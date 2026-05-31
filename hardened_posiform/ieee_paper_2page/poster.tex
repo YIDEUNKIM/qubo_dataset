@@ -163,7 +163,7 @@ $\displaystyle Q_{\alpha}(x) \;=\; \sum_{i} R_i(x) \;+\; \alpha\,P(x)$
 
 \begin{block}{\bnum{2}Idea: measure the failures}
 \RaggedRight
-Instead of ``did it succeed?'', we ask how close the failing runs come to $\xstar$. We use two quantities, over \textbf{failures only}, on a \textbf{fixed set of the $100$ hardest} instances:
+Instead of asking whether a run succeeded, we ask how close the failing runs come to $\xstar$. We use two quantities, over \textbf{failures only}, on a \textbf{fixed set of the $100$ hardest} instances:
 \begin{itemize}
   \item \sacol{Energy gap} $\Delta E = E(x)-E(\xstar)\ge 0$ --- depth of the trap.
   \item \qpucol{Hamming distance} $\mathrm{HD}(x,\xstar)$ --- bit-distance to the answer.
@@ -195,7 +195,7 @@ These turn the flat $0\%$ into a \textbf{continuous, rankable difficulty curve}.
 \begin{itemize}
   \item \hl{$56.1\%$} of samples reach an $R$ ground state ($\Delta E{=}0$)\dots
   \item \dots yet \hl{$0\%$} equal $\xstar$, and HD is maximal ($459=8.2\%$ of $n$).
-  \cimp $\Delta E$ alone reads ``\textbf{solved}''; only \textbf{HD} reveals that no sample is near $\xstar$.
+  \cimp $\Delta E$ alone reads as \textbf{solved}, yet only \textbf{HD} reveals that no sample is near $\xstar$.
 \end{itemize}
 \vskip0.35cm
 \lab{As $\alpha$ grows:}
