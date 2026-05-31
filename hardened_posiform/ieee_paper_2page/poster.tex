@@ -17,7 +17,7 @@
 \usepackage{ragged2e}
 
 %==================== colours ====================
-\definecolor{deepblue}{RGB}{15,42,78}     % title bar, block headers
+\definecolor{deepblue}{RGB}{29,90,150}    % title bar, block headers (#1D5A96)
 \definecolor{midblue}{RGB}{23,84,130}     % sub-emphasis
 \definecolor{saBlue}{RGB}{31,119,180}     % SA  (matches figure)
 \definecolor{qpuRed}{RGB}{200,30,38}      % QPU (matches figure)
@@ -124,11 +124,11 @@
     \vskip1.0cm
   \end{beamercolorbox}
   \begin{beamercolorbox}[wd=\paperwidth,ht=0.35cm,sep=0pt]{accentbar}\end{beamercolorbox}
-  % KNU logo on a white badge, top-left, drawn on top of the band
+  % KNU logo on a white badge, flush-left and vertically centred in the title band
   \begin{tikzpicture}[remember picture, overlay]
-    \node[anchor=north west, fill=white, rounded corners=16pt, inner sep=11pt]
-      at ([xshift=1.4cm, yshift=-0.95cm]current page.north west)
-      {\includegraphics[height=5.8cm]{figures/knu_logo.png}};
+    \node[anchor=west, fill=white, rounded corners=16pt, inner sep=10pt]
+      at ([xshift=0.8cm, yshift=-8.2cm]current page.north west)
+      {\includegraphics[height=11.5cm]{figures/knu_logo.png}};
   \end{tikzpicture}
 }
 
@@ -210,7 +210,7 @@ These turn the flat $0\%$ into a \textbf{continuous, rankable difficulty curve}.
 \RaggedRight
 Failure-conditioned $\Delta E$ traces $\Delta E = \Delta R + \alpha\,\Delta P$ directly:
 \begin{itemize}
-  \item \lab{Floor.} For $\alpha\in[10^{-9},10^{-4}]$, $\Delta E$ is flat at the bare $R$-trap depth --- mean $1.10$, median exactly $1$ (one $\Delta_R$); $\alpha\Delta P$ negligible. HD flat $\approx 73$.
+  \item \lab{Floor.} For $\alpha\in[10^{-9},10^{-4}]$, $\Delta E$ is flat at the depth of a local-minimum trap in $R$ --- mean $1.10$, median exactly $1$ (one $\Delta_R$); $\alpha\Delta P$ negligible. HD flat $\approx 73$.
   \item \lab{Peak.} Past $\alpha{=}10^{-3}$ the planted term switches on; $\Delta E$ rises to a \hl{non-monotone peak of $3.35$ at $\alpha{=}10^{-2}$} ($3.0\times$ the floor), then declines to $2.16$.
   \item \lab{Mechanism.} $\Delta R,\Delta P$ are fixed per bitstring; as failures move toward $\xstar$ their $\Delta P$ falls, so $\Delta E$ peaks where rising $\alpha$ stops outpacing that fall.
 \end{itemize}
@@ -256,7 +256,7 @@ $5\times10^{-3}$ & 49.2 & 380.9 & 3.08 & 37.2 \\
 $1.5\times10^{-2}$ & 18.4 & 216.1 & 2.79 & \hl{43.5} \\
 \rowcolor{bandgray}$2\times10^{-2}$ & 11.2 & 167.1 & 2.16 & 42.1 \\
 \bottomrule
-\end{tabular}}
+\end{tabular}\par}
 \RaggedRight\vskip0.25cm
 {\normalsize Peak $\Delta E$ in \hl{orange}. SA: aggregate failure $\ge 91\%$ at every $\alpha$; QPU: $0\%$ success at every $\alpha$.}
 \end{block}

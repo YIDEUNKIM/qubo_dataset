@@ -124,12 +124,11 @@ is not circular. We then run both solvers on it.
 and the energy gap $\Delta E = E(x)-E(x^\star)\geq 0$ under the same $Q_\alpha$.
 Because every $R_{ij}$ is $\pm1$, each $R$ energy is an integer. We therefore
 report $\Delta E$ in units of the smallest non-degenerate $R$ gap
-($\Delta_R{=}1$). This unit is the same across instances, as is HD$/n$. At
-$\alpha{=}0$, $x^\star$ is one of many $R$ ground states, so an energy match
-($|\Delta E|<10^{-7}$) is not always a bit match. For $\alpha{>}0$ the ground
-state is unique. We count a read as a success only on a bit match
-($x{=}x^\star$). The $0\%$ success rate and the per-read failure rate both use
-this criterion, not the ground-state energy, which is degenerate at $\alpha{=}0$.
+($\Delta_R{=}1$). This unit is the same across instances, as is HD$/n$. A read counts
+as a success only when it equals $x^\star$ (a bit match), so the $0\%$ success
+rate and the per-read failure rate both track $x^\star$ exactly. This differs
+from matching the ground-state energy, which at $\alpha{=}0$ is degenerate
+(Sec.~\ref{sec:vpc}).
 At large $\alpha$, correct samples ($\Delta E{\approx}0$, HD${=}0$) drive both
 quantities to $0$. We therefore condition all statistics below on failure
 ($x{\neq}x^\star$). Means are over failing reads. The instance-level standard
@@ -167,16 +166,17 @@ reach an $R$ ground state ($\Delta E{=}0$), yet $0\%$ equal $x^\star$, and HD is
 maximal ($459$, or $8.2\%$ of $n$). So $\Delta E$ alone would read as solved,
 but HD shows no sample is near $x^\star$. For $\alpha{>}0$ (Fig.~\ref{fig:traj}b),
 in the small-$\alpha$ region ($\alpha\in[10^{-9},10^{-4}]$), $\alpha\Delta P$ is
-negligible and $\Delta E$ stays flat at the bare $R$-trap depth. We call this
+negligible and $\Delta E$ stays flat at the depth of a local-minimum trap in $R$. We call this
 flat value the floor (mean $1.10$, median $1$). HD is also flat ($\approx73$). Past $\alpha{=}10^{-3}$ the planted term grows. $\Delta
 E$ rises to a peak of $3.35$ at $\alpha{=}10^{-2}$, which is $3.0\times$ the
 floor, then declines to $2.16$. The floor, peak, and decline are separated by
 far more than the instance-level SE ($<0.06\,\Delta_R$). HD meanwhile falls
 monotonically ($73\to11$). So failing samples move closer to $x^\star$ in bits
-even as their energy gap grows. The peak follows from
-$\Delta E{=}\Delta R{+}\alpha\Delta P$, where $\Delta R$ and $\Delta P$ are
-fixed for each bitstring. As failures near $x^\star$, their $\Delta P$ falls, so
-$\Delta E$ peaks where rising $\alpha$ stops outpacing this fall. The peak is
+even as their energy gap grows. The peak comes from a
+competition. Rising $\alpha$ pushes $\Delta E$ up. Meanwhile, failing samples
+drift toward $x^\star$, where the penalty $\Delta P$ is smaller, so $\Delta E$ is
+pulled down. The peak sits where this pull overtakes $\alpha$
+($\Delta E{=}\Delta R{+}\alpha\Delta P$, $\Delta R,\Delta P$ fixed per bitstring). The peak is
 not a survivorship or selection artifact. The $100$ instances fail at least
 $91\%$ of reads at every $\alpha$ ($0\%$ ground-state success, as
 \cite{pelofske2024hardened} report). The same shape appears over all $500$
