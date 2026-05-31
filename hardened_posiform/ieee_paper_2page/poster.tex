@@ -148,7 +148,7 @@
 
 \begin{block}{\bnum{1}Motivation: the $0\%$-success wall}
 \RaggedRight
-Benchmarking QUBO solvers needs instances whose optimum is \emph{known} yet that stay \emph{hard}. \textbf{Posiform planting} gives a unique planted optimum~$\xstar$; a hardened variant adds random discrete-coefficient spin-glass QUBOs $R_i$ and scales the planted posiform $P$ by a coefficient $\alpha$:
+Benchmarking QUBO solvers needs instances whose optimum is known yet that stay hard. \textbf{Posiform planting} gives a unique planted optimum~$\xstar$. A hardened variant adds random discrete-coefficient spin-glass QUBOs $R_i$ and scales the planted posiform $P$ by a coefficient $\alpha$:
 \vskip0.4cm
 \begin{center}\large
 $\displaystyle Q_{\alpha}(x) \;=\; \sum_{i} R_i(x) \;+\; \alpha\,P(x)$
@@ -157,13 +157,13 @@ $\displaystyle Q_{\alpha}(x) \;=\; \sum_{i} R_i(x) \;+\; \alpha\,P(x)$
 \begin{itemize}
   \item Hardness is graded by the \textbf{ground-state success rate} (success $=$ the exact planted $\xstar$, not merely ground-state energy).
   \item But across the whole hard regime that rate is \hl{identically $0\%$}.
-  \cimp It \textbf{cannot rank} instances, solvers, or $\alpha$ \emph{within} the hard regime --- the benchmark loses its purpose.
+  \cimp It \textbf{cannot rank} instances, solvers, or $\alpha$ within the hard regime. The benchmark loses its purpose.
 \end{itemize}
 \end{block}
 
 \begin{block}{\bnum{2}Idea: measure the failures}
 \RaggedRight
-Instead of ``did it succeed?'', ask \emph{how close the failing runs come} to $\xstar$, using two quantities --- over \textbf{failures only}, on a \textbf{fixed set of the $100$ hardest} instances:
+Instead of ``did it succeed?'', we ask how close the failing runs come to $\xstar$. We use two quantities, over \textbf{failures only}, on a \textbf{fixed set of the $100$ hardest} instances:
 \begin{itemize}
   \item \sacol{Energy gap} $\Delta E = E(x)-E(\xstar)\ge 0$ --- depth of the trap.
   \item \qpucol{Hamming distance} $\mathrm{HD}(x,\xstar)$ --- bit-distance to the answer.
@@ -176,7 +176,7 @@ These turn the flat $0\%$ into a \textbf{continuous, rankable difficulty curve}.
 \RaggedRight
 \lab{Instances.} $500$ posiform-planted QUBOs on the D-Wave \textbf{Pegasus P16} graph ($n{=}5612$ qubits), \texttt{lin2} coefficients $R_{ij}\!\in\!\{-1,+1\}$. Kernighan--Lin bisection into $\le 16$-qubit blocks, each $R_i$ solved exactly; $\xstar=$ concatenated block ground states (global min of $\sum_i R_i$); $P=$ posiform of a planted 2-SAT with unique solution~$\xstar$.
 \vskip0.35cm
-\lab{Fixed set.} Rank instances by total SA failing-reads across the sweep; fix the hardest $100$ --- \textbf{chosen from SA alone, before any QPU run}, so the cross-solver agreement is \emph{not circular}.
+\lab{Fixed set.} Rank instances by total SA failing-reads across the sweep. Fix the hardest $100$, \textbf{chosen from SA alone, before any QPU run}, so the cross-solver agreement is not circular.
 \vskip0.35cm
 \lab{Metrics.} \texttt{lin2} $\Rightarrow$ integer $R$ energies $\Rightarrow$ report $\Delta E$ in units of the minimal $R$-gap $\Delta_R{=}1$ (comparable across instances). All statistics are \textbf{conditional on failure} ($x\neq\xstar$).
 \vskip0.35cm
@@ -189,19 +189,19 @@ These turn the flat $0\%$ into a \textbf{continuous, rankable difficulty curve}.
 \begin{column}{\sepwid}\end{column}
 \begin{column}{\onecolwid}
 
-\begin{block}{\bnum{4}Why report \emph{both} metrics}
+\begin{block}{\bnum{4}Why report both metrics}
 \RaggedRight
 \lab{At $\alpha{=}0$ ($R$ alone, degenerate):}
 \begin{itemize}
   \item \hl{$56.1\%$} of samples reach an $R$ ground state ($\Delta E{=}0$)\dots
-  \item \dots yet \hl{$0\%$} equal $\xstar$, and HD is \emph{maximal} ($459=8.2\%$ of $n$).
+  \item \dots yet \hl{$0\%$} equal $\xstar$, and HD is maximal ($459=8.2\%$ of $n$).
   \cimp $\Delta E$ alone reads ``\textbf{solved}''; only \textbf{HD} reveals that no sample is near $\xstar$.
 \end{itemize}
 \vskip0.35cm
 \lab{As $\alpha$ grows:}
 \begin{itemize}
-  \item HD \sacol{decreases} (failures move \emph{closer in bits} to $\xstar$)\dots
-  \item \dots while $\Delta E$ rises to a \hl{peak} (failures get \emph{deeper in energy}).
+  \item HD \sacol{decreases} (failures move closer in bits to $\xstar$)\dots
+  \item \dots while $\Delta E$ rises to a \hl{peak} (failures get deeper in energy).
   \cimp \textbf{Opposite trends on the same samples} --- each metric captures what the other misses.
 \end{itemize}
 \end{block}
@@ -215,7 +215,7 @@ Failure-conditioned $\Delta E$ traces $\Delta E = \Delta R + \alpha\,\Delta P$ d
   \item \lab{Mechanism.} $\Delta R,\Delta P$ are fixed per bitstring; as failures move toward $\xstar$ their $\Delta P$ falls, so $\Delta E$ peaks where rising $\alpha$ stops outpacing that fall.
 \end{itemize}
 \vskip0.35cm
-\textbf{Not a survivorship or selection artifact:} the $100$-instance set keeps failing at every $\alpha$ ($\ge 91\%$ of reads in aggregate), and the \emph{same} non-monotone shape appears over \textbf{all $500$ instances} (floor $\approx 1.1$, peak $\approx 3.0$, then $1.9$) --- the hardest set only sharpens it.
+\textbf{Not a survivorship or selection artifact.} The $100$-instance set keeps failing at every $\alpha$ ($\ge 91\%$ of reads in aggregate). The same non-monotone shape appears over \textbf{all $500$ instances} (floor $\approx 1.1$, peak $\approx 3.0$, then $1.9$), and the hardest set only sharpens it.
 \end{block}
 
 \begin{alertblock}{\bnum{6}$\Delta E$ ranks what the success rate cannot}
@@ -263,10 +263,10 @@ $1.5\times10^{-2}$ & 18.4 & 216.1 & 2.79 & \hl{43.5} \\
 
 \begin{block}{\bnum{9}Quantum-annealer consistency check}
 \RaggedRight
-As \textbf{supporting evidence}, a \emph{single} run of the same $100$ instances on \textbf{D-Wave Advantage} gives $0\%$ success at every $\alpha$, yet the \textbf{same qualitative pattern}: a non-monotone $\Delta E$ peak near $\alpha{=}10^{-2}$ (weaker, $1.8\times$ vs $3.0\times$) and HD decreasing monotonically (\qpucol{$501\to167$}).
+As \textbf{supporting evidence}, a single run of the same $100$ instances on \textbf{D-Wave Advantage} gives $0\%$ success at every $\alpha$. It still shows the \textbf{same pattern}. There is a non-monotone $\Delta E$ peak near $\alpha{=}10^{-2}$ (weaker, $1.8\times$ vs $3.0\times$) and a monotonic HD decrease (\qpucol{$501\to167$}).
 \begin{itemize}
   \item Baselines an order of magnitude above SA ($\Delta E\approx 24$ vs.\ $1$) $\Rightarrow$ \textbf{consistent with an instance property, not SA-specific} (one run cannot prove generality).
-  \item \lab{Precision floor.} Peak couplers map to Ising $J\approx 0.03$, near the scale where integrated control errors (ICE) matter; we \emph{hypothesize} that a smaller problem scale would push them below ICE and \textbf{flatten the peak} --- left to future verification.
+  \item \lab{Precision floor.} Peak couplers map to Ising $J\approx 0.03$, near the scale where integrated control errors (ICE) matter. We expect a smaller problem scale would push them below ICE and \textbf{flatten the peak}, and leave this to future work.
 \end{itemize}
 \end{block}
 
@@ -281,7 +281,7 @@ As \textbf{supporting evidence}, a \emph{single} run of the same $100$ instances
 \begin{column}{\fullwid}
 \begin{block}{\bnum{10}Conclusion}
 \RaggedRight\large
-Failure-conditioned \sacol{$\Delta E$} is the difficulty diagnostic and \qpucol{HD} its complement --- the all-sample mean (hence the success rate) hides the peak, falling at large $\alpha$ only because more reads succeed while the remaining failures stay deep. Whenever an $\alpha$-like hardness parameter is swept, we recommend reporting \textbf{failure-conditioned $\Delta E$ (floor \& peak) together with HD over a fixed set of hardest instances}. Because the curve persists across SA budgets and is echoed by a supporting quantum-annealer run, it provides a failure-conditioned \emph{diagnostic} of the benchmark instances rather than a single difficulty score, though absolute values remain solver- and schedule-dependent.
+Failure-conditioned \sacol{$\Delta E$} is the difficulty diagnostic, and \qpucol{HD} is its complement. The all-sample mean (the success rate) hides the peak. It falls at large $\alpha$ only because more reads succeed, not because the remaining failures are shallower. Whenever an $\alpha$-like hardness parameter is swept, we recommend reporting \textbf{failure-conditioned $\Delta E$ (floor \& peak) together with HD over a fixed set of hardest instances}. The curve persists across SA budgets and is echoed by a supporting quantum-annealer run. So it gives a failure-conditioned diagnostic of the benchmark instances rather than a single difficulty score. Absolute values still depend on the solver and schedule.
 \end{block}
 \end{column}
 \begin{column}{\sepwid}\end{column}

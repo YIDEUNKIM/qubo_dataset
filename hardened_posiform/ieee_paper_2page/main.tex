@@ -56,23 +56,22 @@ Foundation of Korea (NRF) funded by the Ministry of Education (No.~25411243).}
 \maketitle
 
 \begin{abstract}
-Benchmarking QUBO solvers requires instances whose optimum is known yet
-that remain hard. Posiform planting provides such instances with a unique
-planted optimum; a recent variant adds random spin-glass terms and scales the
-planted term by a coefficient $\alpha$ that tunes hardness. Hardness, however,
-is graded by the success rate, which is identically $0\%$ across the hard
-regime and so cannot rank instances, solvers, or $\alpha$ values within it. We
-instead measure, over failing runs only and on a fixed set of the hardest
-instances, the energy gap to the optimum and the Hamming distance (HD) from
-the planted answer; together they turn the flat $0\%$ into a continuous
-difficulty curve. Under simulated annealing on a D-Wave Pegasus graph
-($n{=}5612$) the curve is non-monotone in $\alpha$ -- a peak, then a decline
--- with the two quantities opposed: as $\alpha$ grows the failing samples move
-closer in HD yet deeper in energy. A single supporting run on a D-Wave
-Advantage annealer reproduces the same qualitative shape on much larger gaps,
-consistent with the structure not being specific to SA. Reporting both
-failure-conditioned quantities enables finer-grained grading of planted QUBO
-benchmarks in the zero-success regime.
+Benchmarking QUBO solvers needs instances with a known optimum that stay hard.
+Posiform planting builds such instances with one unique optimum. A recent
+variant adds random spin-glass terms and scales the planted term by a
+coefficient $\alpha$ to tune hardness. Hardness is usually graded by the
+success rate. This rate is $0\%$ across the whole hard regime, so it cannot
+rank instances, solvers, or $\alpha$. We instead measure how close the failing
+runs come to the optimum. Over failures only, and on a fixed set of the hardest
+instances, we record the energy gap and the Hamming distance (HD) to the
+planted answer. Together they turn the flat $0\%$ into a continuous difficulty
+curve. Under simulated annealing on a D-Wave Pegasus graph ($n{=}5612$), the
+curve is non-monotone in $\alpha$. It rises to a peak, then declines. As
+$\alpha$ grows, failing samples move closer in HD but deeper in energy. A single
+supporting run on a D-Wave Advantage annealer shows the same shape on larger
+gaps. This suggests the structure comes from the instances, not SA alone.
+Reporting both quantities grades planted QUBO benchmarks even when no run
+succeeds.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -81,145 +80,141 @@ simulated annealing, Hamming distance, energy gap, $\alpha$-difficulty.
 \end{IEEEkeywords}
 
 \section{Introduction}
-Benchmarking programmable quantum annealers and classical heuristics
-on QUBO problems requires instances whose optima are known yet
-non-trivial to find. Posiform planting~\cite{hahn2023posiform}
-produces unique-ground-state QUBOs but is easy for simulated
-annealing (SA)~\cite{kirkpatrick1983}. Pelofske \emph{et al.}~\cite{pelofske2024hardened}
-increased its hardness by adding random
-discrete-coefficient spin-glass QUBOs $R_i$ to a posiform-planted
-QUBO $P$ (unique minimum $x^\star$) through a posiform scaling
-coefficient $\alpha$:
+Benchmarking quantum annealers and classical heuristics on QUBO problems needs
+instances whose optima are known but hard to find. Posiform
+planting~\cite{hahn2023posiform} produces QUBOs with a unique ground state, but
+they are easy for simulated annealing (SA)~\cite{kirkpatrick1983}. Pelofske et
+al.~\cite{pelofske2024hardened} made them harder. They add random
+discrete-coefficient spin-glass QUBOs $R_i$ to a posiform-planted QUBO $P$ with
+unique minimum $x^\star$, scaled by a coefficient $\alpha$:
 \begin{equation}
   Q_{\alpha}(x) \;=\; \sum_{i} R_{i}(x) \;+\; \alpha\,P(x).
   \label{eq:qalpha}
 \end{equation}
 That study tuned hardness mainly through the random-QUBO size and the
-annealing time, fixing $\alpha\in\{0.01,0.1\}$, and reported the
-\emph{ground-state success rate}. But the success rate is identically
-$0\%$ across the entire small-$\alpha$ regime, so it cannot rank
-instances, solvers, or $\alpha$ values \emph{within} it. Pelofske \emph{et
-al.}\ conjecture the hardness stems from ``local minima whose energy is very
-close to the true ground state.''
+annealing time. It fixed $\alpha\in\{0.01,0.1\}$ and reported the ground-state
+success rate. But this rate is $0\%$ across the whole small-$\alpha$ regime. It
+cannot rank instances, solvers, or $\alpha$ values. Pelofske et al.\ conjecture
+the hardness comes from ``local minima whose energy is very close to the true
+ground state.''
 
-We make that conjecture quantitative. $\Delta E$ proxies local-minimum depth,
-but over all samples it conflates depth with the success rate; we therefore
-condition on failure and restrict to the $100$ hardest instances, held constant
-as $\alpha$ varies. So measured, failure-conditioned $\Delta E$ and Hamming
-distance (HD) reveal a $\Delta R{+}\alpha\Delta P$ structure with a non-monotone
-peak. Neither quantity is new; our
-contribution is the protocol -- failure-conditioning on a fixed hardest set
--- that converts the uninformative $0\%$ rate into a rankable curve, with a
-single supporting quantum-annealer run consistent with the structure
-reflecting the instances rather than the SA implementation alone.
+We make that conjecture quantitative. $\Delta E$ measures local-minimum depth.
+But over all samples it mixes depth with the success rate. We therefore
+condition on failure and use the $100$ hardest instances, held fixed as $\alpha$
+varies. Measured this way, failure-conditioned $\Delta E$ and Hamming distance
+(HD) reveal a $\Delta R{+}\alpha\Delta P$ structure with a non-monotone peak.
+Neither quantity is new. Our contribution is the protocol. Failure-conditioning
+on a fixed hardest set turns the uninformative $0\%$ rate into a rankable curve.
+A single supporting quantum-annealer run is consistent with this structure
+coming from the instances, not SA alone.
 
 \section{Methodology}
-\textbf{Instances.} We generate $500$ posiform-planted instances on the
-D-Wave Pegasus P16 graph~\cite{boothby2020} ($n{=}5612$ qubits) with
-\texttt{lin2} coefficients ($R_{ij}\in\{-1,+1\}$). Kernighan--Lin bisection
-splits the graph into $\leq16$-qubit blocks, each $R_i$ solved exactly. The planted target $x^\star$
--- the concatenation of the block ground states -- is the global minimum of
-$\sum_i R_i$; $P$ is the posiform of a planted 2-SAT with unique solution
-$x^\star$. We rank the $500$ by total SA failing-reads across the sweep and fix the
-hardest $100$ as a constant set -- chosen from SA alone before any QPU run, so
-the cross-solver agreement is not circular -- then run both solvers on it.
+\textbf{Instances.} We generate $500$ posiform-planted instances on the D-Wave
+Pegasus P16 graph~\cite{boothby2020} ($n{=}5612$ qubits). Each coefficient
+$R_{ij}$ is $-1$ or $+1$. We split the graph into blocks of at most $16$ qubits
+by recursive bisection and solve each block $R_i$ exactly. The planted target
+$x^\star$ is the concatenation of the block ground states, so it is the global
+minimum of $\sum_i R_i$. $P$ is the posiform of a planted 2-SAT whose only
+solution is $x^\star$. We rank the $500$ instances by their total SA
+failing-reads across the sweep and fix the hardest $100$ as a constant set. This
+set is chosen from SA alone, before any QPU run, so the cross-solver agreement
+is not circular. We then run both solvers on it.
 
-\textbf{Metrics and flags.} Per sample $x$ we record
-HD$(x,x^\star)$~\cite{hamming1950} and the energy gap
-$\Delta E = E(x)-E(x^\star)\geq 0$ under the same $Q_\alpha$. With lin2
-every $R$ energy is integer, so we report $\Delta E$ in units of the
-minimal non-degenerate $R$ gap ($\Delta_R{=}1$), comparable across
-instances, as is HD$/n$. At $\alpha{=}0$, $x^\star$ is one of many $R$ ground
-states, so an energy match ($|\Delta E|<10^{-7}$) need not be a bit match; for
-$\alpha{>}0$ it is unique. We score a read as a \emph{success} only on a bit-match
-($x{=}x^\star$); the $0\%$ success rate and the per-read failure rate use this
-criterion, not the (at $\alpha{=}0$ degenerate) ground-state energy. Since
-correct samples ($\Delta E{\approx}0$, HD${=}0$)
-drive both quantities to $0$ at large $\alpha$, all statistics below are
-\emph{conditional on failure} ($x{\neq}x^\star$). Means are over failing reads;
-the instance-level standard error stays below $0.06\,\Delta_R$ (error bars omitted).
+\textbf{Metrics.} For each sample $x$ we record HD$(x,x^\star)$~\cite{hamming1950}
+and the energy gap $\Delta E = E(x)-E(x^\star)\geq 0$ under the same $Q_\alpha$.
+Because every $R_{ij}$ is $\pm1$, each $R$ energy is an integer. We therefore
+report $\Delta E$ in units of the smallest non-degenerate $R$ gap
+($\Delta_R{=}1$). This unit is the same across instances, as is HD$/n$. At
+$\alpha{=}0$, $x^\star$ is one of many $R$ ground states, so an energy match
+($|\Delta E|<10^{-7}$) is not always a bit match. For $\alpha{>}0$ the ground
+state is unique. We count a read as a success only on a bit match
+($x{=}x^\star$). The $0\%$ success rate and the per-read failure rate both use
+this criterion, not the ground-state energy, which is degenerate at $\alpha{=}0$.
+At large $\alpha$, correct samples ($\Delta E{\approx}0$, HD${=}0$) drive both
+quantities to $0$. We therefore condition all statistics below on failure
+($x{\neq}x^\star$). Means are over failing reads. The instance-level standard
+error stays below $0.06\,\Delta_R$, so we omit error bars.
 
-\textbf{Protocol.} We sweep $\alpha$ over $0$, $10^{-9}$, $10^{-5}$,
-$10^{-4}$, $10^{-3}$, $3{\times}10^{-3}$, $5{\times}10^{-3}$, $10^{-2}$,
-$1.5{\times}10^{-2}$, $2{\times}10^{-2}$, refined near the peak; beyond it the
-instances are increasingly solved, leaving no fixed failing set. The main sweep runs
-the \texttt{neal} SA package~\cite{neal} at $1000$ sweeps, $100$ reads per
-(instance,\,$\alpha$). For a cross-solver check we
-replay the same $100$ instances on a D-Wave Advantage annealer
-(\texttt{Advantage\_system6.4}, hardware-native), with auto-scaling, two-gauge
-averaging, and $100$ reads at $20\,\mu$s; $\Delta E$ is recomputed from $Q_\alpha$.
+\textbf{Protocol.} We sweep $\alpha$ over $0$, $10^{-9}$, $10^{-5}$, $10^{-4}$,
+$10^{-3}$, $3{\times}10^{-3}$, $5{\times}10^{-3}$, $10^{-2}$, $1.5{\times}10^{-2}$,
+and $2{\times}10^{-2}$, with extra points near the peak. Beyond $2{\times}10^{-2}$
+the instances are increasingly solved, so no fixed failing set remains. The main
+sweep uses the \texttt{neal} SA package~\cite{neal} at $1000$ sweeps and $100$
+reads per (instance,\,$\alpha$). For a cross-solver check we replay the same
+$100$ instances on a D-Wave Advantage annealer (\texttt{Advantage\_system6.4}).
+The run is hardware-native, with auto-scaling, two-gauge averaging, and $100$
+reads at $20\,\mu$s. We recompute $\Delta E$ from $Q_\alpha$.
 
 \section{Results}
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.90\columnwidth]{figures/fig_sa_vs_qpu.pdf}
-\caption{Failure-conditioned difficulty over the $100$ hardest instances
-(each $\alpha$: $\geq91\%$ of reads fail). Blue: SA; red: a D-Wave Advantage
-annealer. (a)~HD (log axis) descends monotonically but never reaches $0$.
+\includegraphics[width=0.82\columnwidth]{figures/fig_sa_vs_qpu.pdf}
+\caption{Failure-conditioned difficulty over the $100$ hardest instances. At
+each $\alpha$, at least $91\%$ of reads fail. Blue: SA. Red: a D-Wave Advantage
+annealer. (a)~HD on a log axis falls monotonically but never reaches $0$.
 (b)~$\Delta E$ rescaled by each solver's small-$\alpha$ floor (SA
-$\approx1.1\,\Delta_R$, QPU $\approx24$) onto one axis: both start at $1$; SA
-rises to a non-monotone peak of $3.0\times$ near $\alpha{=}10^{-2}$ then
-declines, the annealer reproducing the same qualitative shape but more weakly
-($1.8\times$).}
+$\approx1.1\,\Delta_R$, QPU $\approx24$), on one axis. Both start at $1$. SA
+rises to a peak of $3.0\times$ near $\alpha{=}10^{-2}$, then declines. The
+annealer shows the same shape but more weakly ($1.8\times$).}
 \label{fig:traj}
 \end{figure}
 
-\subsection{The $\Delta_R$ floor and the $\alpha P$ peak}
+\subsection{Floor, peak, and decline of $\Delta E$}
 \label{sec:vpc}
-At $\alpha{=}0$, $R$ is degenerate: $56.1\%$ of samples reach an $R$ ground
-state ($\Delta E{=}0$) yet $0\%$ equal $x^\star$, with HD maximal ($459$,
-$8.2\%$ of $n$); $\Delta E$ alone would read as solved, while only HD shows no
-sample is near $x^\star$. For $\alpha{>}0$ (Fig.~\ref{fig:traj}b), in the
-small-$\alpha$ region ($\alpha\in[10^{-9},10^{-4}]$) $\Delta E$ stays flat at
-the bare $R$ depth -- mean $1.10$, median exactly $1$ -- because $\alpha\Delta
-P$ is negligible; HD is likewise flat ($\approx73$). As $\alpha$ increases past $10^{-3}$ the
-planted term becomes significant and $\Delta E$ rises to a
-\emph{non-monotone peak} of $3.35$ at $\alpha{=}10^{-2}$ -- $3.0\times$ the
-$\Delta_R$ floor -- then declines to $2.16$; floor, peak, and decline separate
-by far more than the instance-level SE ($<0.06\,\Delta_R$). HD meanwhile
-decreases monotonically ($73\to11$): failing samples move closer to $x^\star$
-in HD even as their energy gap grows -- opposite trends on the same samples. The peak follows from $\Delta E{=}\Delta R{+}\alpha\Delta P$ with $\Delta R,\Delta P$
-per-bitstring constants: as failures near $x^\star$, $\Delta P$ falls, so $\Delta E$
-peaks where rising $\alpha$ stops outpacing it. The
-peak is neither a survivorship nor a
-selection artifact: the $100$ instances fail $\geq91\%$ of reads at every
-$\alpha$ ($0\%$ ground-state success, as~\cite{pelofske2024hardened} report),
-and the same non-monotone shape appears over all $500$ instances (floor
-${\approx}1.1$, peak ${\approx}3.0$), the hardest set only sharpening it.
+At $\alpha{=}0$ the random part $R$ is degenerate. Here $56.1\%$ of samples
+reach an $R$ ground state ($\Delta E{=}0$), yet $0\%$ equal $x^\star$, and HD is
+maximal ($459$, or $8.2\%$ of $n$). So $\Delta E$ alone would read as solved,
+but HD shows no sample is near $x^\star$. For $\alpha{>}0$ (Fig.~\ref{fig:traj}b),
+in the small-$\alpha$ region ($\alpha\in[10^{-9},10^{-4}]$), $\alpha\Delta P$ is
+negligible and $\Delta E$ stays flat at the bare $R$-trap depth. We call this
+flat value the floor (mean $1.10$, median $1$). HD is also flat ($\approx73$). Past $\alpha{=}10^{-3}$ the planted term grows. $\Delta
+E$ rises to a peak of $3.35$ at $\alpha{=}10^{-2}$, which is $3.0\times$ the
+floor, then declines to $2.16$. The floor, peak, and decline are separated by
+far more than the instance-level SE ($<0.06\,\Delta_R$). HD meanwhile falls
+monotonically ($73\to11$). So failing samples move closer to $x^\star$ in bits
+even as their energy gap grows. The peak follows from
+$\Delta E{=}\Delta R{+}\alpha\Delta P$, where $\Delta R$ and $\Delta P$ are
+fixed for each bitstring. As failures near $x^\star$, their $\Delta P$ falls, so
+$\Delta E$ peaks where rising $\alpha$ stops outpacing this fall. The peak is
+not a survivorship or selection artifact. The $100$ instances fail at least
+$91\%$ of reads at every $\alpha$ ($0\%$ ground-state success, as
+\cite{pelofske2024hardened} report). The same shape appears over all $500$
+instances (floor $\approx1.1$, peak $\approx3.0$), and the hardest set only
+sharpens it.
 
 \subsection{Quantum-annealer consistency check}
 \label{sec:qpu}
-As supporting evidence, a single run of the same $100$ instances on a D-Wave
-Advantage annealer (Fig.~\ref{fig:traj}, red) reproduces the qualitative
-pattern -- $0\%$ success, a non-monotone $\Delta E$ peak near $\alpha{=}10^{-2}$
-(weaker in relative terms, $1.8\times$ its floor vs SA's $3.0\times$), and
-monotonic HD decrease ($501\to167$) -- on baselines an order of magnitude
-above SA's ($\Delta E\approx24$, HD$\approx500$). One run cannot establish
-generality but is consistent with the structure being an instance property,
-not SA-specific. The peak's couplers map to Ising
-$J\approx0.03$, near the device's integrated control error (ICE); we \emph{hypothesize} that
-smaller problem scales would push them below ICE and flatten the peak, leaving
-this to future verification.
+As supporting evidence, we ran the same $100$ instances once on a D-Wave
+Advantage annealer (Fig.~\ref{fig:traj}, red). It shows the same pattern. There
+is $0\%$ success, a non-monotone $\Delta E$ peak near $\alpha{=}10^{-2}$, and a
+monotonic HD decrease ($501\to167$). Its baselines sit an order of magnitude
+above SA's ($\Delta E\approx24$, HD$\approx500$), and its peak is weaker in
+relative terms ($1.8\times$ its floor versus SA's $3.0\times$). One run cannot
+establish generality. But it is consistent with the structure being a property
+of the instances, not of SA. At the peak the planted couplers map to Ising
+$J\approx0.03$, near the device's integrated control error (ICE). We expect that
+a smaller scale would push them below ICE and flatten the peak, which we leave
+to future work.
 
 \section{Discussion and Conclusion}
-Failure-conditioned $\Delta E$ diagnoses difficulty (local-minimum depth) and
-HD diagnoses proximity to $x^\star$, so reporting both separates how
-\emph{deep} a failure is from how \emph{close} it is. The all-sample mean
-(the success rate) obscures the peak, falling at larger $\alpha$ only because
-more reads succeed, not because the remaining failures are shallower. $\Delta E$ also separates solvers the success rate cannot: on a separate
-$150$-instance subset (not the hardest-$100$ set above) at $\alpha{=}10^{-3}$,
-$1000$ vs.\ $5000$ SA sweeps (both $0\%$ success) give $\Delta E$ $1.68$
-vs.\ $1.00$. Because the curve persists across
-SA budgets and is echoed by the supporting QPU run, we recommend reporting
-failure-conditioned $\Delta E$ (floor and peak) with HD over a fixed hardest
-set whenever an $\alpha$-like parameter is swept; this provides a failure-conditioned diagnostic of
-the benchmark instances -- not a single difficulty score -- though absolute
-values remain solver- and schedule-dependent.
+Failure-conditioned $\Delta E$ measures difficulty (local-minimum depth) and
+HD measures proximity to $x^\star$. Reporting both separates how deep a failure
+is from how close it is. The all-sample mean (the success rate) hides the peak.
+It falls at larger $\alpha$ only because more reads succeed, not because failures
+are shallower. $\Delta E$ also separates solvers that the
+success rate cannot. On a separate $150$-instance subset (not the hardest-$100$
+set above), at $\alpha{=}10^{-3}$, $1000$ and $5000$ SA sweeps both give $0\%$
+success, yet $\Delta E$ is $1.68$ versus $1.00$. The curve persists across SA
+budgets and is echoed by the supporting QPU run. We therefore recommend
+reporting failure-conditioned $\Delta E$ (floor and peak) with HD over a fixed
+hardest set whenever an $\alpha$-like parameter is swept. This gives a
+failure-conditioned diagnostic of the benchmark instances rather than a single
+difficulty score. Absolute values still depend on the solver and schedule.
 
 \textbf{Limitations.} The QPU evidence is a single run (two gauges, one
-$20\,\mu$s anneal); the classical side is a single SA family, and instances use
-one coefficient type (\texttt{lin2}) and one topology (Pegasus).
+$20\,\mu$s anneal). The classical side is a single SA family. The instances use
+one coefficient type ($\pm1$) and one topology (Pegasus).
 
 \textbf{Future work:} broader classical solvers, more annealer gauges and
 anneal times, other coefficient types and topologies, and joint
