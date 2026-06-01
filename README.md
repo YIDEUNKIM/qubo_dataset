@@ -212,6 +212,53 @@ Mandrà et al. (arXiv:2308.09704). McEliece 공개키 → Ising 스핀 → Rosen
 
 Q 행렬은 Python dict `{(i, j): weight}` (upper triangular, i ≤ j)로 저장. Edge-list CSV 파일: `# target,<bitstring>` 헤더 + `i,j,weight` 행.
 
+## 인스턴스 데이터셋 (QPU 벤치마크)
+
+논문 실험에 쓰인 **QPU 검증 Hardened Posiform 인스턴스**를 저장소에 함께 공개한다.
+
+| 파일 | 토폴로지 | n (qubits) | 인스턴스 | 계수 | 크기 |
+|------|----------|:----------:|:--------:|:----:|:----:|
+| [`hardened_posiform/instances/instances_pegasus16_lin2_100.pkl`](hardened_posiform/instances/instances_pegasus16_lin2_100.pkl) | Pegasus P16 | 5612 | 100 | lin2 | ~98 MB |
+
+> D-Wave **Advantage_system6.4** 하드웨어 그래프에 임베딩 가능함이 검증된 인스턴스 (2026-05-20). 나머지 대용량 인스턴스 파일들(lin20, 200/300/500/hard300, Zephyr Z12)은 GitHub 100 MB 제한으로 저장소에 포함하지 않으며, `hardened_posiform/regen_pegasus_instances.py`로 재생성하거나 요청 시 제공한다.
+
+### 다운로드
+
+```bash
+# 저장소 clone 시 함께 받아짐 (LFS 아닌 일반 파일)
+git clone https://github.com/YIDEUNKIM/qubo_dataset.git
+
+# 또는 이 파일만 직접 다운로드
+curl -L -o instances_pegasus16_lin2_100.pkl \
+  https://raw.githubusercontent.com/YIDEUNKIM/qubo_dataset/main/hardened_posiform/instances/instances_pegasus16_lin2_100.pkl
+```
+
+### 사용법
+
+각 인스턴스는 random QUBO 항 `R_sum`과 posiform 항 `P`를 분리 저장한다. 난이도 파라미터 α를 골라 **Q_α = R_sum + α·P**로 최종 QUBO를 조립한다 (α 작을수록 SA가 풀기 어려움).
+
+```python
+import pickle
+
+with open("hardened_posiform/instances/instances_pegasus16_lin2_100.pkl", "rb") as f:
+    data = pickle.load(f)
+
+print(data["meta"])          # topology, n, qpu_solver 등 메타데이터
+inst = data["instances"][0]  # 100개 중 0번
+
+# Q_α = R_sum + α·P 로 최종 QUBO 조립
+alpha = 0.01                 # 논문 기본값
+Q = dict(inst["R_sum"])
+for k, v in inst["P"].items():
+    Q[k] = Q.get(k, 0) + alpha * v
+
+# 정답(ground state)과 그 에너지
+target = inst["target_str"]                          # sorted_nodes 순서 비트스트링
+gs_energy = inst["t_energy_r"] + alpha * inst["t_energy_p"]
+```
+
+**인스턴스 키**: `R_sum`·`P` (각각 `{(i,j): weight}` dict) · `target` (`{node: bit}`) · `target_str` (`sorted_nodes` 순서 정답) · `sorted_nodes` (비트 인덱스↔QPU 노드) · `t_energy_r`·`t_energy_p` (R·P 항의 target 에너지) · `seed`. 그 외 `n`, `total_degeneracy`, `all_block_gs`, `partitions`는 생성 내부용.
+
 ## 의존성
 
 ```bash

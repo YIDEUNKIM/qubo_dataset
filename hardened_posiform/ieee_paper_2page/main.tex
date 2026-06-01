@@ -27,8 +27,7 @@
 
 \begin{document}
 
-\title{Difficulty Analysis of Posiform-Planted QUBO Benchmarks\\
-via Energy and Hamming Metrics}
+\title{Difficulty Analysis of Posiform-Planted QUBO Benchmarks via Energy and Hamming Metrics}
 
 \author{
 \IEEEauthorblockN{Yideun Kim}
@@ -44,11 +43,10 @@ Department of Convergence Security\\
 Kangwon National University\\
 Chuncheon, Republic of Korea\\
 Email: dongjae.lee@kangwon.ac.kr}
-\thanks{This work was supported by the Korea Internet \& Security Agency
+\thanks{This work was supported in part by the Korea Internet \& Security Agency
 (KISA) grant funded by the Korean government (Ministry of Science and ICT,
 MSIT) through the ``Information Security Workforce Development (Information
-Security Specialized University Program)'' in 2026. This research was also
-supported by the Basic Science Research Program through the National Research
+Security Specialized University Program)'' in 2026 and in part by the Basic Science Research Program through the National Research
 Foundation of Korea (NRF) funded by the Ministry of Education (No.~25411243).}
 \thanks{$^{\dagger}$Corresponding author: Dongjae Lee.}
 }
@@ -56,20 +54,21 @@ Foundation of Korea (NRF) funded by the Ministry of Education (No.~25411243).}
 \maketitle
 
 \begin{abstract}
-Benchmarking QUBO solvers needs instances with a known optimum that stay hard.
-Posiform planting builds such instances with one unique optimum. A recent
-variant adds random spin-glass terms and scales the planted term by a
-coefficient $\alpha$ to tune hardness. Hardness is usually graded by the
-success rate. This rate is $0\%$ across the whole hard regime, so it cannot
-rank instances, solvers, or $\alpha$. We instead measure how close the failing
-runs come to the optimum. Over failures only, and on a fixed set of the hardest
+Benchmarking QUBO solvers requires instances with a known optimum that stay hard.
+Posiform planting builds such instances with a unique optimum. A recent variant
+adds random spin-glass terms and scales the planted term by a coefficient
+$\alpha$ to tune hardness. Prior work characterizes this hardness only
+empirically, through the solver success rate, which shows that difficulty varies
+with the parameters but not why, and cannot compare instances once the rate hits
+$0\%$. We instead measure how close failing runs come to the optimum. Over
+failures only, on a fixed set of the hardest
 instances, we record the energy gap and the Hamming distance (HD) to the
-planted answer. Together they turn the flat $0\%$ into a continuous difficulty
-curve. Under simulated annealing on a D-Wave Pegasus graph ($n{=}5612$), the
-curve is non-monotone in $\alpha$. It rises to a peak, then declines. As
-$\alpha$ grows, failing samples move closer in HD but deeper in energy. A single
-supporting run on a D-Wave Advantage annealer shows the same shape on larger
-gaps. This suggests the structure comes from the instances, not SA alone.
+planted answer. These turn the flat $0\%$ into a continuous difficulty curve.
+Under simulated annealing (SA) on a D-Wave Pegasus graph ($n{=}5612$), the curve
+is non-monotone in $\alpha$: it rises to a peak, then declines, with failing
+samples moving closer in HD but deeper in energy. A single supporting run on a
+D-Wave Advantage annealer shows the same shape on larger gaps, suggesting the
+structure comes from the instances, not SA alone.
 Reporting both quantities grades planted QUBO benchmarks even when no run
 succeeds.
 \end{abstract}
@@ -105,8 +104,7 @@ varies. Measured this way, failure-conditioned $\Delta E$ and Hamming distance
 (HD) reveal a $\Delta R{+}\alpha\Delta P$ structure with a non-monotone peak.
 Neither quantity is new. Our contribution is the protocol. Failure-conditioning
 on a fixed hardest set turns the uninformative $0\%$ rate into a rankable curve.
-A single supporting quantum-annealer run is consistent with this structure
-coming from the instances, not SA alone.
+A supporting quantum-annealer run is consistent with this structure coming from the instances, not SA alone.
 
 \section{Methodology}
 \textbf{Instances.} We generate $500$ posiform-planted instances on the D-Wave
@@ -167,16 +165,22 @@ maximal ($459$, or $8.2\%$ of $n$). So $\Delta E$ alone would read as solved,
 but HD shows no sample is near $x^\star$. For $\alpha{>}0$ (Fig.~\ref{fig:traj}b),
 in the small-$\alpha$ region ($\alpha\in[10^{-9},10^{-4}]$), $\alpha\Delta P$ is
 negligible and $\Delta E$ stays flat at the depth of a local-minimum trap in $R$. We call this
-flat value the floor (mean $1.10$, median $1$). HD is also flat ($\approx73$). Past $\alpha{=}10^{-3}$ the planted term grows. $\Delta
+flat value the floor (mean $1.10$, median $1$). This floor of $\approx1\,\Delta_R$
+is the quantitative content of the local-minimum conjecture
+in~\cite{pelofske2024hardened}: in the small-$\alpha$ limit, failing samples sit
+about one $R$-gap above $x^\star$. HD is also flat ($\approx73$). Past $\alpha{=}10^{-3}$ the planted term grows. $\Delta
 E$ rises to a peak of $3.35$ at $\alpha{=}10^{-2}$, which is $3.0\times$ the
 floor, then declines to $2.16$. The floor, peak, and decline are separated by
 far more than the instance-level SE ($<0.06\,\Delta_R$). HD meanwhile falls
 monotonically ($73\to11$). So failing samples move closer to $x^\star$ in bits
 even as their energy gap grows. The peak comes from a
-competition. Rising $\alpha$ pushes $\Delta E$ up. Meanwhile, failing samples
-drift toward $x^\star$, where the penalty $\Delta P$ is smaller, so $\Delta E$ is
-pulled down. The peak sits where this pull overtakes $\alpha$
-($\Delta E{=}\Delta R{+}\alpha\Delta P$, $\Delta R,\Delta P$ fixed per bitstring). The peak is
+competition. For a fixed failing bitstring,
+$\Delta E{=}\Delta R{+}\alpha\Delta P$ is linear in $\alpha$ ($\Delta R,\Delta P$
+fixed per bitstring). But the failing set is not fixed: as $\alpha$ rises,
+failing samples drift toward $x^\star$ (HD falls), where $\Delta P$ is smaller.
+The observed mean is an envelope over this moving population: it climbs while
+$\alpha\Delta P$ dominates, then falls as the drift into smaller-$\Delta P$
+regions wins. The peak is
 not a survivorship or selection artifact. The $100$ instances fail at least
 $91\%$ of reads at every $\alpha$ ($0\%$ ground-state success, as
 \cite{pelofske2024hardened} report). The same shape appears over all $500$
@@ -192,10 +196,12 @@ monotonic HD decrease ($501\to167$). Its baselines sit an order of magnitude
 above SA's ($\Delta E\approx24$, HD$\approx500$), and its peak is weaker in
 relative terms ($1.8\times$ its floor versus SA's $3.0\times$). One run cannot
 establish generality. But it is consistent with the structure being a property
-of the instances, not of SA. At the peak the planted couplers map to Ising
-$J\approx0.03$, near the device's integrated control error (ICE). We expect that
-a smaller scale would push them below ICE and flatten the peak, which we leave
-to future work.
+of the instances, not of SA. The integrated control error (ICE) is the
+annealer's control-precision limit: couplers carry a roughly fixed error of
+order $0.02$--$0.03$. At the peak the planted couplers map to Ising
+$J\approx0.03$, comparable to ICE, so the device only partly resolves the
+signal, consistent with the weaker peak above. A smaller scale would push them
+below ICE and should flatten it, which we leave to future work.
 
 \section{Discussion and Conclusion}
 Failure-conditioned $\Delta E$ measures difficulty (local-minimum depth) and
@@ -205,8 +211,7 @@ It falls at larger $\alpha$ only because more reads succeed, not because failure
 are shallower. $\Delta E$ also separates solvers that the
 success rate cannot. On a separate $150$-instance subset (not the hardest-$100$
 set above), at $\alpha{=}10^{-3}$, $1000$ and $5000$ SA sweeps both give $0\%$
-success, yet $\Delta E$ is $1.68$ versus $1.00$. The curve persists across SA
-budgets and is echoed by the supporting QPU run. We therefore recommend
+success, yet $\Delta E$ is $1.68$ versus $1.00$. We therefore recommend
 reporting failure-conditioned $\Delta E$ (floor and peak) with HD over a fixed
 hardest set whenever an $\alpha$-like parameter is swept. This gives a
 failure-conditioned diagnostic of the benchmark instances rather than a single
