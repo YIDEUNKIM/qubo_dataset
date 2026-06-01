@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2026.5.20)  1 JUN 2026 10:43
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2026.5.20)  1 JUN 2026 16:46
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -322,20 +322,20 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 g
 File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 ))
-LaTeX Font Info:    Calculating math sizes for size <11> on input line 54.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 54.
+LaTeX Font Info:    Calculating math sizes for size <11> on input line 57.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 57.
 
  (C:\Users\User\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 54.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 57.
 
 
 (C:\Users\User\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 1
-39.
+41.
 
 (C:\Users\User\AppData\Local\Programs\MiKTeX\tex/latex/psnfss\ot1pcr.fd
 File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
@@ -345,21 +345,27 @@ r/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}
 
 
 ]
-<figures/fig_sa_vs_qpu.pdf, id=19, 245.42012pt x 180.21007pt>
+<figures/fig_sa_vs_qpu.pdf, id=17, 245.42012pt x 180.21007pt>
 File: figures/fig_sa_vs_qpu.pdf Graphic file (type pdf)
 <use figures/fig_sa_vs_qpu.pdf>
-Package pdftex.def Info: figures/fig_sa_vs_qpu.pdf  used on input line 149.
+Package pdftex.def Info: figures/fig_sa_vs_qpu.pdf  used on input line 153.
 (pdftex.def)             Requested size: 206.64185pt x 151.74112pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 207--219
+Underfull \hbox (badness 10000) in paragraph at lines 211--222
 []\OT1/ptm/m/n/10 Failure-conditioned $\OT1/cmr/m/n/10 ^^A\OML/cmm/m/it/10 E$ \
 OT1/ptm/m/n/10 mea-sures dif-fi-culty (local-
  []
 
 
-Underfull \hbox (badness 4341) in paragraph at lines 207--219
+Underfull \hbox (badness 4341) in paragraph at lines 211--222
 \OT1/ptm/m/n/10 minimum depth) and HD mea-sures prox-im-ity to $\OML/cmm/m/it/1
 0 x[]$\OT1/ptm/m/n/10 .
+ []
+
+
+Underfull \hbox (badness 1655) in paragraph at lines 211--222
+\OT1/ptm/m/n/10 ver-sus $\OT1/cmr/m/n/10 1\OML/cmm/m/it/10 :\OT1/cmr/m/n/10 00$
+\OT1/ptm/m/n/10 . We there-fore rec-om-mend re-port-ing failure-
  []
 
 
@@ -383,7 +389,7 @@ L3 programming layer <2024-01-04>
 Here is how much of TeX's memory you used:
  4243 strings out of 474486
  67895 string characters out of 5744227
- 1945542 words of memory out of 5000000
+ 1946542 words of memory out of 5000000
  26482 multiletter control sequences out of 15000+600000
  600451 words of font info for 127 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -411,7 +417,7 @@ ype1/urw/times/utmbi8a.pfb><C:/Users/User/AppData/Local/Programs/MiKTeX/fonts/t
 ype1/urw/times/utmr8a.pfb><C:/Users/User/AppData/Local/Programs/MiKTeX/fonts/ty
 pe1/urw/times/utmri8a.pfb>
 Output written on //wsl.localhost/Ubuntu-24.04\home\yideun\qubo_dataset\out\mai
-n.pdf (2 pages, 249900 bytes).
+n.pdf (2 pages, 251528 bytes).
 PDF statistics:
  157 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)

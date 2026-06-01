@@ -46,8 +46,11 @@ Email: dongjae.lee@kangwon.ac.kr}
 \thanks{This work was supported in part by the Korea Internet \& Security Agency
 (KISA) grant funded by the Korean government (Ministry of Science and ICT,
 MSIT) through the ``Information Security Workforce Development (Information
-Security Specialized University Program)'' in 2026 and in part by the Basic Science Research Program through the National Research
-Foundation of Korea (NRF) funded by the Ministry of Education (No.~25411243).}
+Security Specialized University Program)'' in 2026, in part by the Basic Science
+Research Program through the National Research Foundation of Korea (NRF) funded
+by the Ministry of Education (No.~25411243), and in part by the ``Creation of the
+Quantum Information Science R\&D Ecosystem (Based on Human Resources)'' through
+the NRF funded by the Korean government (RS-2023-NR057243).}
 \thanks{$^{\dagger}$Corresponding author: Dongjae Lee.}
 }
 
@@ -115,7 +118,7 @@ minimum of $\sum_i R_i$. $P$ is the posiform of a planted 2-SAT whose only
 solution is $x^\star$. We rank the $500$ instances by their total SA
 failing-reads across the sweep and fix the hardest $100$ as a constant set. This
 set is chosen from SA alone, before any QPU run, so the cross-solver agreement
-is not circular. We then run both solvers on it.
+is not circular.
 
 \textbf{Metrics.} For each sample $x$ we record HD$(x,x^\star)$~\cite{hamming1950}
 and the energy gap $\Delta E = E(x)-E(x^\star)\geq 0$ under the same $Q_\alpha$.
