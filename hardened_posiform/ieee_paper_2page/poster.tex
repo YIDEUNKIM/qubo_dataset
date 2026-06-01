@@ -149,11 +149,11 @@
 \begin{block}{\bnum{1}Motivation: the $0\%$-success wall}
 \RaggedRight
 Benchmarking QUBO solvers needs instances whose optimum is known yet that stay hard. \textbf{Posiform planting} gives a unique planted optimum~$\xstar$. A hardened variant adds random discrete-coefficient spin-glass QUBOs $R_i$ and scales the planted posiform $P$ by a coefficient $\alpha$:
-\vskip0.4cm
+\vskip0.65cm
 \begin{center}\large
 $\displaystyle Q_{\alpha}(x) \;=\; \sum_{i} R_i(x) \;+\; \alpha\,P(x)$
 \end{center}
-\vskip0.4cm
+\vskip0.65cm
 \begin{itemize}
   \item Hardness is graded by the \textbf{ground-state success rate} (success $=$ the exact planted $\xstar$, not merely ground-state energy).
   \item But across the whole hard regime that rate is \hl{identically $0\%$}.
@@ -168,18 +168,18 @@ Instead of asking whether a run succeeded, we ask how close the failing runs com
   \item \sacol{Energy gap} $\Delta E = E(x)-E(\xstar)\ge 0$ --- depth of the trap.
   \item \qpucol{Hamming distance} $\mathrm{HD}(x,\xstar)$ --- bit-distance to the answer.
 \end{itemize}
-\vskip0.3cm
+\vskip0.55cm
 These turn the flat $0\%$ into a \textbf{continuous, rankable difficulty curve}. Neither quantity is new --- the \textbf{contribution is the protocol}: failure-conditioning on a fixed hardest set, cross-checked on real hardware.
 \end{block}
 
 \begin{block}{\bnum{3}Methodology}
 \RaggedRight
 \lab{Instances.} $500$ posiform-planted QUBOs on the D-Wave \textbf{Pegasus P16} graph ($n{=}5612$ qubits), \texttt{lin2} coefficients $R_{ij}\!\in\!\{-1,+1\}$. Kernighan--Lin bisection into $\le 16$-qubit blocks, each $R_i$ solved exactly; $\xstar=$ concatenated block ground states (global min of $\sum_i R_i$); $P=$ posiform of a planted 2-SAT with unique solution~$\xstar$.
-\vskip0.35cm
+\vskip0.6cm
 \lab{Fixed set.} Rank instances by total SA failing-reads across the sweep. Fix the hardest $100$, \textbf{chosen from SA alone, before any QPU run}, so the cross-solver agreement is not circular.
-\vskip0.35cm
+\vskip0.6cm
 \lab{Metrics.} \texttt{lin2} $\Rightarrow$ integer $R$ energies $\Rightarrow$ report $\Delta E$ in units of the minimal $R$-gap $\Delta_R{=}1$ (comparable across instances). All statistics are \textbf{conditional on failure} ($x\neq\xstar$).
-\vskip0.35cm
+\vskip0.6cm
 \lab{Protocol.} \texttt{neal} SA package, $1000$ sweeps, $100$ reads / (instance,\,$\alpha$). Cross-check: same $100$ instances on a \textbf{D-Wave Advantage} annealer --- hardware-native, auto-scale, two-gauge, $100$ reads $\times\,20\,\mu$s.
 \end{block}
 
@@ -197,7 +197,7 @@ These turn the flat $0\%$ into a \textbf{continuous, rankable difficulty curve}.
   \item \dots yet \hl{$0\%$} equal $\xstar$, and HD is maximal ($459=8.2\%$ of $n$).
   \cimp $\Delta E$ alone reads as \textbf{solved}, yet only \textbf{HD} reveals that no sample is near $\xstar$.
 \end{itemize}
-\vskip0.35cm
+\vskip0.6cm
 \lab{As $\alpha$ grows:}
 \begin{itemize}
   \item HD \sacol{decreases} (failures move closer in bits to $\xstar$)\dots
@@ -214,7 +214,7 @@ Failure-conditioned $\Delta E$ traces $\Delta E = \Delta R + \alpha\,\Delta P$ d
   \item \lab{Peak.} Past $\alpha{=}10^{-3}$ the planted term switches on; $\Delta E$ rises to a \hl{non-monotone peak of $3.35$ at $\alpha{=}10^{-2}$} ($3.0\times$ the floor), then declines to $2.16$.
   \item \lab{Mechanism.} $\Delta R,\Delta P$ are fixed per bitstring; as failures move toward $\xstar$ their $\Delta P$ falls, so $\Delta E$ peaks where rising $\alpha$ stops outpacing that fall.
 \end{itemize}
-\vskip0.35cm
+\vskip0.6cm
 \textbf{Not a survivorship or selection artifact.} The $100$-instance set keeps failing at every $\alpha$ ($\ge 91\%$ of reads in aggregate). The same non-monotone shape appears over \textbf{all $500$ instances} (floor $\approx 1.1$, peak $\approx 3.0$, then $1.9$), and the hardest set only sharpens it.
 \end{block}
 
@@ -232,7 +232,7 @@ Two SA budgets ($1000$ vs.\ $5000$ sweeps) both reach $0\%$ success in the small
 \begin{block}{\bnum{7}Fig.\,1 --- Failure-conditioned difficulty}
 \centering
 \includegraphics[width=0.99\onecolwid]{figures/fig_sa_vs_qpu.pdf}
-\RaggedRight\vskip0.3cm
+\RaggedRight\vskip0.55cm
 {\normalsize Same $100$ hardest instances (each $\alpha$: $\ge 91\%$ of reads fail in aggregate). \sacol{Blue}: SA; \qpucol{red}: D-Wave Advantage. \textbf{(a)}~HD (log axis) decreases monotonically yet never reaches $0$. \textbf{(b)}~$\Delta E$ rescaled by each solver's small-$\alpha$ floor onto one axis: both start at $1$; SA rises to a non-monotone $3.0\times$ peak near $\alpha{=}10^{-2}$, the annealer reproducing the same shape more weakly ($1.8\times$).}
 \end{block}
 
@@ -257,7 +257,7 @@ $1.5\times10^{-2}$ & 18.4 & 216.1 & 2.79 & \hl{43.5} \\
 \rowcolor{bandgray}$2\times10^{-2}$ & 11.2 & 167.1 & 2.16 & 42.1 \\
 \bottomrule
 \end{tabular}\par}
-\RaggedRight\vskip0.25cm
+\RaggedRight\vskip0.5cm
 {\normalsize Peak $\Delta E$ in \hl{orange}. SA: aggregate failure $\ge 91\%$ at every $\alpha$; QPU: $0\%$ success at every $\alpha$.}
 \end{block}
 

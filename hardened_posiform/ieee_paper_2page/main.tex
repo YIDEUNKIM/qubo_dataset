@@ -58,17 +58,16 @@ Benchmarking QUBO solvers requires instances with a known optimum that stay hard
 Posiform planting builds such instances with a unique optimum. A recent variant
 adds random spin-glass terms and scales the planted term by a coefficient
 $\alpha$ to tune hardness. Prior work characterizes this hardness only
-empirically, through the solver success rate, which shows that difficulty varies
-with the parameters but not why, and cannot compare instances once the rate hits
-$0\%$. We instead measure how close failing runs come to the optimum. Over
-failures only, on a fixed set of the hardest
-instances, we record the energy gap and the Hamming distance (HD) to the
-planted answer. These turn the flat $0\%$ into a continuous difficulty curve.
-Under simulated annealing (SA) on a D-Wave Pegasus graph ($n{=}5612$), the curve
-is non-monotone in $\alpha$: it rises to a peak, then declines, with failing
-samples moving closer in HD but deeper in energy. A single supporting run on a
-D-Wave Advantage annealer shows the same shape on larger gaps, suggesting the
-structure comes from the instances, not SA alone.
+empirically, via the success rate, which shows that difficulty varies with the
+parameters but not why, and cannot compare instances at $0\%$ success. We instead measure how close failing runs come to the optimum. Over
+failures only, on a fixed hardest-instance set, we record the energy gap and
+Hamming distance (HD) to the planted answer. These resolve the flat $0\%$ into a continuous difficulty curve with a clear
+structure: $\Delta E = \Delta R + \alpha\Delta P$, a local-minimum floor plus a
+growing planted penalty. Under simulated annealing (SA) on a D-Wave Pegasus
+graph ($n{=}5612$) it is non-monotone in $\alpha$: $\Delta E$ peaks then declines
+while HD falls throughout, with the peak where the rising penalty is overtaken
+by failures drifting toward the optimum. A D-Wave Advantage run reproduces the
+shape, suggesting an instance property, not SA alone.
 Reporting both quantities grades planted QUBO benchmarks even when no run
 succeeds.
 \end{abstract}
@@ -134,10 +133,12 @@ error stays below $0.06\,\Delta_R$, so we omit error bars.
 
 \textbf{Protocol.} We sweep $\alpha$ over $0$, $10^{-9}$, $10^{-5}$, $10^{-4}$,
 $10^{-3}$, $3{\times}10^{-3}$, $5{\times}10^{-3}$, $10^{-2}$, $1.5{\times}10^{-2}$,
-and $2{\times}10^{-2}$, with extra points near the peak. Beyond $2{\times}10^{-2}$
+and $2{\times}10^{-2}$. Beyond $2{\times}10^{-2}$
 the instances are increasingly solved, so no fixed failing set remains. The main
 sweep uses the \texttt{neal} SA package~\cite{neal} at $1000$ sweeps and $100$
-reads per (instance,\,$\alpha$). For a cross-solver check we replay the same
+reads per (instance,\,$\alpha$); we also run a separate $150$-instance subset
+(not the hardest-$100$) at $1000$ and $5000$ sweeps to compare budgets. For a
+cross-solver check we replay the same
 $100$ instances on a D-Wave Advantage annealer (\texttt{Advantage\_system6.4}).
 The run is hardware-native, with auto-scaling, two-gauge averaging, and $100$
 reads at $20\,\mu$s. We recompute $\Delta E$ from $Q_\alpha$.
@@ -209,9 +210,8 @@ HD measures proximity to $x^\star$. Reporting both separates how deep a failure
 is from how close it is. The all-sample mean (the success rate) hides the peak.
 It falls at larger $\alpha$ only because more reads succeed, not because failures
 are shallower. $\Delta E$ also separates solvers that the
-success rate cannot. On a separate $150$-instance subset (not the hardest-$100$
-set above), at $\alpha{=}10^{-3}$, $1000$ and $5000$ SA sweeps both give $0\%$
-success, yet $\Delta E$ is $1.68$ versus $1.00$. We therefore recommend
+success rate cannot: on the $150$-instance subset at $\alpha{=}10^{-3}$, both
+budgets give $0\%$ success, yet $\Delta E$ is $1.68$ versus $1.00$. We therefore recommend
 reporting failure-conditioned $\Delta E$ (floor and peak) with HD over a fixed
 hardest set whenever an $\alpha$-like parameter is swept. This gives a
 failure-conditioned diagnostic of the benchmark instances rather than a single
