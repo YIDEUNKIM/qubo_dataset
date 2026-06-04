@@ -12,3 +12,25 @@ hardened_posiform/instances/*.pkl
 # Claude Code / IDE 로컬 상태
 .claude/
 anaconda_projects/
+
+# === 원격엔 main.tex 재현용 최소 코드·데이터만 (나머지는 로컬 전용) ===
+# 논문 작업 폴더·LaTeX 빌드물·바이너리 산출물
+hardened_posiform/ieee_paper_2page/
+out/
+*.pdf
+*.pptx
+*.zip
+hardened_posiform/papers/
+hardened_posiform/sa_vulnerability/
+# 논문에 안 쓰는 실험 스크립트·노트북·로그
+hardened_posiform/test_*.py
+hardened_posiform/analyze_hard300.py
+hardened_posiform/compare_difficulty.py
+hardened_posiform/extend_alphas.py
+hardened_posiform/merge_alphas.py
+hardened_posiform/regen_pegasus_*.py
+hardened_posiform/posiform.ipynb
+hardened_posiform/answer_*.json
+# results: QPU 재현 결과 디렉토리만 공개, 나머지는 로컬 전용
+hardened_posiform/results/*
+!hardened_posiform/results/qpu_run_i0-100_20260527_221806/
