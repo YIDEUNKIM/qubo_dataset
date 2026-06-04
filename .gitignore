@@ -34,3 +34,5 @@ hardened_posiform/answer_*.json
 # results: QPU 재현 결과 디렉토리만 공개, 나머지는 로컬 전용
 hardened_posiform/results/*
 !hardened_posiform/results/qpu_run_i0-100_20260527_221806/
+# 프로젝트 내부 지침(로컬 전용)
+CLAUDE.md
